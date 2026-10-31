@@ -20,32 +20,39 @@ export const site = {
   whatsapp: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "",
   phone: process.env.NEXT_PUBLIC_PHONE ?? "",
   instagram: process.env.NEXT_PUBLIC_INSTAGRAM_URL ?? "",
-  /**
-   * Orari DA CONFERMARE. Due fasce per giorno: la pausa pranzo
-   * separa le fasce e il calcolo disponibilità le rispetta.
-   */
-  hours: [
-    { day: "Martedì", schema: "Tuesday", slots: [["09:00", "12:30"], ["14:30", "19:00"]] },
-    { day: "Mercoledì", schema: "Wednesday", slots: [["09:00", "12:30"], ["14:30", "19:00"]] },
-    { day: "Giovedì", schema: "Thursday", slots: [["09:00", "12:30"], ["14:30", "19:00"]] },
-    { day: "Venerdì", schema: "Friday", slots: [["09:00", "12:30"], ["14:30", "19:00"]] },
-    { day: "Sabato", schema: "Saturday", slots: [["09:00", "18:00"]] },
-  ] as { day: string; schema: string; slots: [string, string][] }[],
-  closedDays: "Domenica e lunedì",
 } as const;
 
+/** Fasce orarie [inizio, fine] per giorno ISO (1 lunedì ... 7 domenica). */
+export type OpeningHours = Partial<Record<"1" | "2" | "3" | "4" | "5" | "6" | "7", [string, string][]>>;
+
+/**
+ * Orari di default DA CONFERMARE, usati dal seed. Poi si modificano
+ * dall'admin (tabella Settings). Le due fasce separano la pausa pranzo.
+ */
+export const defaultOpeningHours: OpeningHours = {
+  "2": [["09:00", "12:30"], ["14:30", "19:00"]],
+  "3": [["09:00", "12:30"], ["14:30", "19:00"]],
+  "4": [["09:00", "12:30"], ["14:30", "19:00"]],
+  "5": [["09:00", "12:30"], ["14:30", "19:00"]],
+  "6": [["09:00", "18:00"]],
+};
+
+export const weekdays = [
+  { iso: "1", label: "Lunedì", schema: "Monday" },
+  { iso: "2", label: "Martedì", schema: "Tuesday" },
+  { iso: "3", label: "Mercoledì", schema: "Wednesday" },
+  { iso: "4", label: "Giovedì", schema: "Thursday" },
+  { iso: "5", label: "Venerdì", schema: "Friday" },
+  { iso: "6", label: "Sabato", schema: "Saturday" },
+  { iso: "7", label: "Domenica", schema: "Sunday" },
+] as const;
+
+/** Valori di default della promo prima visita (usati dal seed). */
 export const promo = {
   discountPercent: 20,
   /** Ultimo giorno valido (incluso), ora di Roma. */
   endDate: "2026-11-30",
-  endLabel: "30 novembre 2026",
 };
-
-/** True se la promo prima visita è ancora attiva alla data indicata. */
-export function isPromoActive(now: Date = new Date()): boolean {
-  const end = new Date(`${promo.endDate}T23:59:59+01:00`);
-  return now.getTime() <= end.getTime();
-}
 
 export function whatsappLink(text?: string): string | null {
   if (!site.whatsapp) return null;

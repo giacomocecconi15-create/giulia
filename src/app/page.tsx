@@ -1,9 +1,10 @@
 import Link from "next/link";
 import JsonLd from "@/components/JsonLd";
-import { faq } from "@/lib/faq";
+import ListinoTabelle from "@/components/ListinoTabelle";
+import { getInfoSalone, getListino } from "@/lib/data";
+import { buildFaq } from "@/lib/faq";
 import { faqSchema, offerCatalogSchema } from "@/lib/schema";
-import { formatPrezzo, getListino } from "@/lib/servizi";
-import { isPromoActive, promo, site } from "@/lib/site";
+import { site } from "@/lib/site";
 
 const valori = [
   {
@@ -51,14 +52,16 @@ function BottonePrenota({ children = "Prenota ora" }: { children?: React.ReactNo
   );
 }
 
-export default function Home() {
-  const listino = getListino();
-  const promoAttiva = isPromoActive();
-  const nastro = listino.flatMap((s) => s.servizi.map((x) => x.nome));
+export default async function Home() {
+  const [listino, info] = await Promise.all([getListino(), getInfoSalone()]);
+  const promoAttiva = info.promoActive;
+  const nastro = listino.flatMap((s) => s.services.map((x) => x.name));
+  const prezzi = Object.fromEntries(listino.flatMap((s) => s.services.map((x) => [x.id, x.priceCents])));
+  const faq = buildFaq(info, prezzi);
 
   return (
     <main id="contenuto">
-      <JsonLd data={offerCatalogSchema()} />
+      <JsonLd data={offerCatalogSchema(listino)} />
       <JsonLd data={faqSchema(faq)} />
 
       {/* Hero */}
@@ -145,15 +148,15 @@ export default function Home() {
         <section aria-labelledby="promo-title" className="animate-oscillate-border border-y-8 bg-ink text-bg">
           <div className="reveal mx-auto grid max-w-6xl gap-8 px-4 py-16 md:grid-cols-[auto_1fr] md:items-center md:gap-16 md:px-8">
             <p className="animate-oscillate font-display text-8xl leading-none md:text-9xl" aria-hidden>
-              -{promo.discountPercent}%
+              -{info.discountPct}%
             </p>
             <div>
               <h2 id="promo-title" className="font-display text-4xl">
-                -{promo.discountPercent}% sulla prima visita
+                -{info.discountPct}% sulla prima visita
               </h2>
               <p className="mt-3 max-w-lg text-lg">
                 Su <strong>taglio donna</strong>, <strong>taglio uomo</strong> e <strong>piega</strong>, per prenotazioni
-                online fatte entro il {promo.endLabel}. Lo sconto compare nel riepilogo prima di confermare.{" "}
+                online fatte entro il {info.promoEndLabel}. Lo sconto compare nel riepilogo prima di confermare.{" "}
                 <Link href="/termini#promozione" className="underline underline-offset-2 hover:text-blue">
                   Condizioni
                 </Link>
@@ -175,39 +178,14 @@ export default function Home() {
           Listino
         </h2>
         <p className="reveal mt-3 max-w-xl text-ink-2">Prezzi in euro, IVA inclusa. Puoi scegliere più servizi nella stessa prenotazione.</p>
-        <div className="mt-10 grid gap-x-16 gap-y-12 md:grid-cols-2">
-          {listino.map((sezione) => (
-            <section key={sezione.id} aria-labelledby={`listino-${sezione.id}`} className="reveal">
-              <h3 id={`listino-${sezione.id}`} className="border-b-2 border-ink pb-2 font-display text-2xl">
-                {sezione.nome}
-              </h3>
-              <table className="w-full text-left">
-                <caption className="sr-only">Prezzi {sezione.nome}</caption>
-                <thead className="sr-only">
-                  <tr>
-                    <th scope="col">Servizio</th>
-                    <th scope="col">Prezzo</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sezione.servizi.map((s) => (
-                    <tr key={s.id} className="border-b border-line">
-                      <th scope="row" className="py-3 pr-4 font-normal">
-                        {s.nome}
-                        {promoAttiva && s.promoEligible && (
-                          <span className="ml-2 text-sm font-semibold text-magenta-text">prima visita -{promo.discountPercent}%</span>
-                        )}
-                      </th>
-                      <td className="py-3 text-right font-semibold whitespace-nowrap tabular-nums">{formatPrezzo(s)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-          ))}
+        <div className="mt-10">
+          <ListinoTabelle listino={listino} promoActive={promoAttiva} discountPct={info.discountPct} />
         </div>
-        <div className="reveal mt-12">
+        <div className="reveal mt-12 flex flex-wrap items-center gap-4">
           <BottonePrenota>Scegli i servizi e prenota</BottonePrenota>
+          <Link href="/listino" className="inline-flex min-h-12 items-center px-1 font-semibold underline underline-offset-4 hover:text-blue">
+            Listino completo
+          </Link>
         </div>
       </section>
 

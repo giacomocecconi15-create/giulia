@@ -1,9 +1,13 @@
 import Link from "next/link";
+import { getInfoSalone } from "@/lib/data";
+import { formatFasce, giorniAperti, giorniChiusi } from "@/lib/hours";
 import { site, whatsappLink } from "@/lib/site";
 import CookiePrefsButton from "./CookiePrefsButton";
 
-export default function Footer() {
+export default async function Footer() {
   const wa = whatsappLink();
+  const { openingHours } = await getInfoSalone();
+  const chiusi = giorniChiusi(openingHours);
   return (
     <footer id="contatti" className="border-t border-line bg-tint">
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 md:grid-cols-3 md:px-8">
@@ -51,20 +55,22 @@ export default function Footer() {
           <table className="mt-3 w-full text-left text-ink-2">
             <caption className="sr-only">Orari di apertura</caption>
             <tbody>
-              {site.hours.map((h) => (
-                <tr key={h.day} className="border-b border-line">
+              {giorniAperti(openingHours).map((h) => (
+                <tr key={h.iso} className="border-b border-line">
                   <th scope="row" className="py-1.5 pr-4 font-normal text-ink">
-                    {h.day}
+                    {h.label}
                   </th>
-                  <td className="py-1.5">{h.slots.map(([a, b]) => `${a}-${b}`).join(", ")}</td>
+                  <td className="py-1.5">{formatFasce(h.slots)}</td>
                 </tr>
               ))}
-              <tr>
-                <th scope="row" className="py-1.5 pr-4 font-normal text-ink">
-                  Chiuso
-                </th>
-                <td className="py-1.5">{site.closedDays}</td>
-              </tr>
+              {chiusi && (
+                <tr>
+                  <th scope="row" className="py-1.5 pr-4 font-normal text-ink">
+                    Chiuso
+                  </th>
+                  <td className="py-1.5">{chiusi}</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </section>

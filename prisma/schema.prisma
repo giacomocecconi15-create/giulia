@@ -1,0 +1,186 @@
+// Modello dati Level Up (docs/HANDOFF.md §5)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  customer
+  admin
+}
+
+enum BookingStatus {
+  confirmed
+  cancelled
+  no_show
+  completed
+}
+
+enum WaitlistStatus {
+  waiting
+  notified
+  booked
+  expired
+  cancelled
+}
+
+model Customer {
+  id                    String          @id @default(cuid())
+  /// Formato E.164, es. +393331234567
+  phone                 String          @unique
+  name                  String
+  role                  Role            @default(customer)
+  createdAt             DateTime        @default(now())
+  marketingConsent      Boolean         @default(false)
+  marketingConsentAt    DateTime?
+  stripeCustomerId      String?         @unique
+  stripePaymentMethodId String?
+  bookings              Booking[]
+  waitlist              WaitlistEntry[]
+  punchCard             PunchCard?
+}
+
+model ServiceSection {
+  id        String    @id
+  name      String
+  sortOrder Int       @default(0)
+  services  Service[]
+}
+
+model Service {
+  id            String         @id
+  sectionId     String
+  section       ServiceSection @relation(fields: [sectionId], references: [id])
+  name          String
+  /// Prezzo in centesimi di euro
+  priceCents    Int
+  /// Prezzo massimo per i servizi "da", in centesimi
+  priceMaxCents Int?
+  priceFrom     Boolean        @default(false)
+  /// Solo per l'agenda: MAI mostrato al cliente
+  durationMin   Int
+  promoEligible Boolean        @default(false)
+  active        Boolean        @default(true)
+  sortOrder     Int            @default(0)
+  /// Nota interna (es. prezzo da verificare)
+  internalNote  String?
+  bookingItems  BookingItem[]
+
+  @@index([sectionId, sortOrder])
+}
+
+model Booking {
+  id                 String        @id @default(cuid())
+  customerId         String
+  customer           Customer      @relation(fields: [customerId], references: [id])
+  start              DateTime
+  end                DateTime
+  status             BookingStatus @default(confirmed)
+  /// Totale prima dello sconto, in centesimi
+  totalPriceCents    Int
+  /// Sconto applicato, in centesimi
+  discountCents      Int           @default(0)
+  /// utm_source o canale (online, telefono, ...)
+  source             String?
+  utmMedium          String?
+  utmCampaign        String?
+  /// Inserita a mano da Giulia (prenotazione telefonica)
+  createdByAdmin     Boolean       @default(false)
+  /// Slot recuperato dalla lista d'attesa
+  fromWaitlist       Boolean       @default(false)
+  reminderSentAt     DateTime?
+  chargedAt          DateTime?
+  stripePaymentIntentId String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  items              BookingItem[]
+
+  @@index([start])
+  @@index([customerId, start])
+  @@index([status, start])
+}
+
+model BookingItem {
+  id         String  @id @default(cuid())
+  bookingId  String
+  booking    Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  serviceId  String
+  service    Service @relation(fields: [serviceId], references: [id])
+  /// Prezzo al momento della prenotazione, in centesimi
+  priceCents Int
+
+  @@index([bookingId])
+}
+
+model WaitlistEntry {
+  id         String         @id @default(cuid())
+  customerId String
+  customer   Customer       @relation(fields: [customerId], references: [id])
+  /// Giorno desiderato (solo data)
+  date       DateTime       @db.Date
+  serviceIds String[]
+  createdAt  DateTime       @default(now())
+  notifiedAt DateTime?
+  /// Slot tenuto da parte durante l'avviso (15 minuti)
+  heldStart  DateTime?
+  heldUntil  DateTime?
+  status     WaitlistStatus @default(waiting)
+
+  @@index([date, status, createdAt])
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  start     DateTime
+  end       DateTime
+  /// pausa, ferie, appuntamento telefonico...
+  reason    String
+  createdAt DateTime @default(now())
+
+  @@index([start])
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([phone, createdAt])
+  @@index([ip, createdAt])
+}
+
+/// Riga unica (id = 1) con le impostazioni del salone.
+model Settings {
+  id                     Int      @id @default(1)
+  /// { "2": [["09:00","12:30"],["14:30","19:00"]], ... } chiave = giorno ISO (1 lunedì ... 7 domenica)
+  openingHours           Json
+  slotMinutes            Int      @default(30)
+  freeCancellationHours  Int      @default(24)
+  firstVisitDiscountPct  Int      @default(20)
+  promoEndDate           DateTime @db.Date
+  recallDays             Int      @default(45)
+  maxLateMinutes         Int      @default(15)
+  /// Quanto in anticipo si può prenotare
+  bookingHorizonDays     Int      @default(60)
+  timezone               String   @default("Europe/Rome")
+  updatedAt              DateTime @updatedAt
+}
+
+model PunchCard {
+  customerId       String   @id
+  customer         Customer @relation(fields: [customerId], references: [id])
+  /// Tagli accumulati (0-5)
+  cuts             Int      @default(0)
+  rewardsAvailable Int      @default(0)
+  updatedAt        DateTime @updatedAt
+}

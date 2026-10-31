@@ -1,8 +1,9 @@
-import { getListino } from "./servizi";
+import type { InfoSalone, SezioneListino } from "./data";
+import { giorniAperti } from "./hours";
 import { site } from "./site";
 
 /** Dati strutturati Schema.org dell'attività, inclusi in tutte le pagine. */
-export function businessSchema() {
+export function businessSchema(info: InfoSalone) {
   return {
     "@context": "https://schema.org",
     "@type": "HairSalon",
@@ -21,7 +22,7 @@ export function businessSchema() {
       addressCountry: site.address.country,
     },
     employee: { "@type": "Person", name: site.operator, jobTitle: "Parrucchiera e barbiera" },
-    openingHoursSpecification: site.hours.flatMap((h) =>
+    openingHoursSpecification: giorniAperti(info.openingHours).flatMap((h) =>
       h.slots.map(([opens, closes]) => ({
         "@type": "OpeningHoursSpecification",
         dayOfWeek: `https://schema.org/${h.schema}`,
@@ -29,7 +30,7 @@ export function businessSchema() {
         closes,
       })),
     ),
-    priceRange: "4-200 €",
+    priceRange: "€€",
     currenciesAccepted: "EUR",
     ...(site.instagram && { sameAs: [site.instagram] }),
     potentialAction: {
@@ -41,30 +42,31 @@ export function businessSchema() {
 }
 
 /** Listino come catalogo di offerte (Service + Offer). */
-export function offerCatalogSchema() {
+export function offerCatalogSchema(listino: SezioneListino[]) {
   return {
     "@context": "https://schema.org",
     "@type": "OfferCatalog",
     name: "Listino Level Up",
+    url: `${site.url}/listino`,
     provider: { "@id": `${site.url}/#business` },
-    itemListElement: getListino().map((sezione) => ({
+    itemListElement: listino.map((sezione) => ({
       "@type": "OfferCatalog",
-      name: sezione.nome,
-      itemListElement: sezione.servizi.map((s) => ({
+      name: sezione.name,
+      itemListElement: sezione.services.map((s) => ({
         "@type": "Offer",
-        itemOffered: { "@type": "Service", name: s.nome, serviceType: sezione.nome },
+        itemOffered: { "@type": "Service", name: s.name, serviceType: sezione.name },
         priceCurrency: "EUR",
         availability: "https://schema.org/InStock",
-        ...(s.prezzoDa
+        ...(s.priceFrom
           ? {
               priceSpecification: {
                 "@type": "PriceSpecification",
-                minPrice: s.prezzo,
-                ...(s.prezzoMax && { maxPrice: s.prezzoMax }),
+                minPrice: s.priceCents / 100,
+                ...(s.priceMaxCents && { maxPrice: s.priceMaxCents / 100 }),
                 priceCurrency: "EUR",
               },
             }
-          : { price: s.prezzo }),
+          : { price: s.priceCents / 100 }),
       })),
     })),
   };

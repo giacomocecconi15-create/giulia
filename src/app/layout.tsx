@@ -7,6 +7,7 @@ import JsonLd from "@/components/JsonLd";
 import PromoBar from "@/components/PromoBar";
 import RevealObserver from "@/components/Reveal";
 import WhatsAppButton from "@/components/WhatsAppButton";
+import { getInfoSalone } from "@/lib/data";
 import { businessSchema } from "@/lib/schema";
 import { site } from "@/lib/site";
 import "./globals.css";
@@ -36,11 +37,12 @@ export const revalidate = 3600;
 
 export const viewport: Viewport = { themeColor: "#FCFFFF" };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const info = await getInfoSalone();
   return (
     <html lang="it" className={`${gloock.variable} ${karla.variable}`}>
       <head>
-        <JsonLd data={businessSchema()} />
+        <JsonLd data={businessSchema(info)} />
       </head>
       <body className="antialiased">
         <a
