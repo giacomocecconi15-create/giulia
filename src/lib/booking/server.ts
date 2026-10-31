@@ -186,7 +186,8 @@ export async function createBooking(input: {
 
       const quote = computeQuote({
         items: services,
-        isFirstVisit: await isFirstVisit(tx, input.customerId),
+        // Lo sconto prima visita vale per le prenotazioni online (Termini, § Promozione)
+        isFirstVisit: input.byAdmin ? false : await isFirstVisit(tx, input.customerId),
         createdAt: now,
         promoEndDate: settings.promoEndDate,
         discountPct: settings.discountPct,

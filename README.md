@@ -59,7 +59,7 @@ Apri http://localhost:3000.
 - [x] Fase 4: OTP via WhatsApp Cloud API (attivo con le chiavi), area Account (sposta, disdici, carnet, storico, riprenota)
 - [x] Fase 5: carta a garanzia con Stripe SetupIntent (attiva con le chiavi), addebito off-session, Termini e Privacy (bozze)
 - [x] Fase 6: conferma, promemoria 24h con risposte rapide, lista d'attesa, richiamo 45 giorni, recensioni, webhook WhatsApp
-- [ ] Fase 7: admin
+- [x] Fase 7: admin mobile per Giulia (agenda giorno e settimana, blocchi, ferie, prenotazioni telefoniche, no-show e addebito, listino, orari e regole, lista d'attesa)
 - [ ] Fase 8: UTM, CSV, test end-to-end
 
 Dati da confermare: orari di default e CAP in `src/lib/site.ts` (gli orari poi vivono nella tabella Settings), contatti in `.env`, e la citazione di Giulia in `src/app/page.tsx`.

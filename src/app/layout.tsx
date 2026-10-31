@@ -1,12 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Gloock, Karla } from "next/font/google";
 import CookieConsent from "@/components/CookieConsent";
-import Footer from "@/components/Footer";
-import Header from "@/components/Header";
 import JsonLd from "@/components/JsonLd";
-import PromoBar from "@/components/PromoBar";
 import RevealObserver from "@/components/Reveal";
-import WhatsAppButton from "@/components/WhatsAppButton";
 import { getInfoSalone } from "@/lib/data";
 import { businessSchema } from "@/lib/schema";
 import { site } from "@/lib/site";
@@ -51,11 +47,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         >
           Vai al contenuto
         </a>
-        <PromoBar />
-        <Header />
         {children}
-        <Footer />
-        <WhatsAppButton />
         <CookieConsent />
         <RevealObserver />
       </body>
