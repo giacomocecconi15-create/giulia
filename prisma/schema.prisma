@@ -172,6 +172,8 @@ model Settings {
   maxLateMinutes         Int      @default(15)
   /// Quanto in anticipo si può prenotare
   bookingHorizonDays     Int      @default(60)
+  /// Preavviso minimo per prenotare online
+  minLeadMinutes         Int      @default(60)
   timezone               String   @default("Europe/Rome")
   updatedAt              DateTime @updatedAt
 }

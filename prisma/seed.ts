@@ -1,13 +1,16 @@
 /**
  * Seed: listino da src/data/servizi.json e impostazioni di default.
- * Idempotente: si può rilanciare, aggiorna i servizi esistenti.
- *   npx prisma db seed
+ * Idempotente. Di default crea solo ciò che manca, così non sovrascrive
+ * prezzi e durate modificati da Giulia nell'admin.
+ *   npm run db:seed                 crea i mancanti
+ *   npm run db:seed -- --aggiorna   riallinea tutto a servizi.json
  */
 import { PrismaClient } from "@prisma/client";
 import data from "../src/data/servizi.json";
 import { defaultOpeningHours, promo } from "../src/lib/site";
 
 const prisma = new PrismaClient();
+const overwrite = process.argv.includes("--aggiorna");
 
 type ServizioJson = {
   id: string;
@@ -24,7 +27,7 @@ async function main() {
   for (const [i, sezione] of data.sezioni.entries()) {
     await prisma.serviceSection.upsert({
       where: { id: sezione.id },
-      update: { name: sezione.nome, sortOrder: i },
+      update: overwrite ? { name: sezione.nome, sortOrder: i } : {},
       create: { id: sezione.id, name: sezione.nome, sortOrder: i },
     });
 
@@ -40,7 +43,7 @@ async function main() {
         sortOrder: j,
         internalNote: s.daVerificare ?? null,
       };
-      await prisma.service.upsert({ where: { id: s.id }, update: fields, create: { id: s.id, ...fields } });
+      await prisma.service.upsert({ where: { id: s.id }, update: overwrite ? fields : {}, create: { id: s.id, ...fields } });
     }
   }
 

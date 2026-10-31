@@ -7,11 +7,11 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "anteprima": "STATIC_EXPORT=1 next build",
     "postinstall": "prisma generate",
     "test": "vitest run",
     "db:migrate": "prisma migrate dev",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "vercel-build": "prisma generate && prisma migrate deploy && tsx prisma/seed.ts && next build"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

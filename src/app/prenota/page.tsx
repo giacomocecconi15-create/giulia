@@ -1,20 +1,27 @@
 import type { Metadata } from "next";
-import PaginaProvvisoria from "@/components/PaginaProvvisoria";
-import { whatsappLink } from "@/lib/site";
+import BookingFlow from "@/components/booking/BookingFlow";
+import { getInfoSalone, getListino } from "@/lib/data";
+import { getCurrentCustomer } from "@/lib/session";
 
-export const metadata: Metadata = { title: "Prenota", alternates: { canonical: "/prenota" } };
+export const metadata: Metadata = {
+  title: "Prenota online",
+  description: "Prenota taglio, colore, schiariture o barba da Level Up a Pesaro. Scegli i servizi, il giorno e l'ora.",
+  alternates: { canonical: "/prenota" },
+};
 
-export default function Prenota() {
-  const wa = whatsappLink("Ciao Giulia, vorrei prenotare.");
+export const dynamic = "force-dynamic";
+
+export default async function Prenota({ searchParams }: { searchParams: Promise<{ servizi?: string }> }) {
+  const [listino, info, customer, sp] = await Promise.all([getListino(), getInfoSalone(), getCurrentCustomer(), searchParams]);
   return (
-    <PaginaProvvisoria titolo="Prenota">
-      <p>La prenotazione online arriva a breve.</p>
-      {wa && (
-        <p>
-          Nel frattempo scrivici su{" "}
-          <a href={wa} className="underline underline-offset-2 hover:text-blue">WhatsApp</a>.
-        </p>
-      )}
-    </PaginaProvvisoria>
+    <main id="contenuto">
+      <BookingFlow
+        listino={listino}
+        promoActive={info.promoActive}
+        discountPct={info.discountPct}
+        initialCustomer={customer ? { name: customer.name, phone: customer.phone } : null}
+        preselected={(sp.servizi ?? "").split(",").filter(Boolean)}
+      />
+    </main>
   );
 }
