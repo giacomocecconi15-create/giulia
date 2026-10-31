@@ -26,6 +26,16 @@ export default function Cookie() {
             <td className="py-2">Ricorda la tua scelta sui cookie per 6 mesi.</td>
           </tr>
           <tr className="border-b border-line">
+            <td className="py-2 pr-4">lu_session</td>
+            <td className="py-2 pr-4">Tecnico</td>
+            <td className="py-2">Mantiene l&apos;accesso al tuo account per 90 giorni. Solo se accedi.</td>
+          </tr>
+          <tr className="border-b border-line">
+            <td className="py-2 pr-4">lu_utm (memoria della scheda)</td>
+            <td className="py-2 pr-4">Tecnico, di prima parte</td>
+            <td className="py-2">Ricorda da quale canale sei arrivato (es. Instagram) per associarlo alla prenotazione. Si cancella chiudendo la scheda.</td>
+          </tr>
+          <tr className="border-b border-line">
             <td className="py-2 pr-4">Google Analytics (_ga)</td>
             <td className="py-2 pr-4">Misurazione, solo con consenso</td>
             <td className="py-2">Statistiche anonime sulle visite.</td>

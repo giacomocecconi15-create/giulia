@@ -3,6 +3,7 @@ import { Gloock, Karla } from "next/font/google";
 import CookieConsent from "@/components/CookieConsent";
 import JsonLd from "@/components/JsonLd";
 import RevealObserver from "@/components/Reveal";
+import UtmCapture from "@/components/UtmCapture";
 import { getInfoSalone } from "@/lib/data";
 import { businessSchema } from "@/lib/schema";
 import { site } from "@/lib/site";
@@ -50,6 +51,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         {children}
         <CookieConsent />
         <RevealObserver />
+        <UtmCapture />
       </body>
     </html>
   );

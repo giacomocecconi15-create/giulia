@@ -6,6 +6,7 @@ import type { SezioneListino } from "@/lib/data";
 import { formatEuro, formatPrezzo } from "@/lib/format";
 import CardGuarantee, { type CardGuaranteeHandle } from "./CardGuarantee";
 import LoginForm, { type LoggedCustomer } from "./LoginForm";
+import { readUtm } from "../UtmCapture";
 
 type Step = "servizi" | "orario" | "accesso" | "conferma" | "fatto";
 type Slot = { start: string; time: string };
@@ -154,7 +155,7 @@ export default function BookingFlow({
       : await fetch("/api/bookings", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ serviceIds: selected, start: slot.start, acceptTerms: terms }),
+          body: JSON.stringify({ serviceIds: selected, start: slot.start, acceptTerms: terms, utm: readUtm() }),
         });
     const data = await res.json();
     setSubmitting(false);

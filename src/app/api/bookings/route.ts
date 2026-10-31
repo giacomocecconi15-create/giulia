@@ -12,7 +12,13 @@ export async function POST(req: Request) {
   if (!customer) return json({ error: "unauthorized", message: "Accedi per confermare." }, 401);
 
   try {
-    const body = (await req.json().catch(() => ({}))) as { serviceIds?: string[]; start?: string; acceptTerms?: boolean };
+    const body = (await req.json().catch(() => ({}))) as {
+      serviceIds?: string[];
+      start?: string;
+      acceptTerms?: boolean;
+      utm?: { source?: string; medium?: string; campaign?: string } | null;
+    };
+    const clean = (v: unknown) => (typeof v === "string" ? v.trim().slice(0, 80) || null : null);
     if (body.acceptTerms !== true) throw new BookingError("terms_required");
     const start = new Date(body.start ?? "");
     if (Number.isNaN(start.getTime())) throw new BookingError("slot_unavailable");
@@ -21,6 +27,9 @@ export async function POST(req: Request) {
       customerId: customer.id,
       serviceIds: parseServiceIds((body.serviceIds ?? []).join(",")),
       start,
+      source: clean(body.utm?.source) ?? "online",
+      utmMedium: clean(body.utm?.medium),
+      utmCampaign: clean(body.utm?.campaign),
     });
     await onBookingCreated(booking);
     return json(

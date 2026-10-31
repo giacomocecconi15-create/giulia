@@ -15,7 +15,8 @@ npm run db:seed           # carica listino e impostazioni da src/data/servizi.js
 npm run dev
 ```
 
-Test: `npm test`.
+Test: `npm test` (unitari) e `E2E=1 npm run test:e2e` (flusso completo nel browser; svuota le
+prenotazioni, quindi funziona solo con un database locale).
 
 Finché WhatsApp non è collegato, il codice di accesso viene stampato nella console del server
 (e mostrato a schermo se `OTP_DEV_SHOW=1`).
@@ -60,6 +61,22 @@ Apri http://localhost:3000.
 - [x] Fase 5: carta a garanzia con Stripe SetupIntent (attiva con le chiavi), addebito off-session, Termini e Privacy (bozze)
 - [x] Fase 6: conferma, promemoria 24h con risposte rapide, lista d'attesa, richiamo 45 giorni, recensioni, webhook WhatsApp
 - [x] Fase 7: admin mobile per Giulia (agenda giorno e settimana, blocchi, ferie, prenotazioni telefoniche, no-show e addebito, listino, orari e regole, lista d'attesa)
-- [ ] Fase 8: UTM, CSV, test end-to-end
+- [x] Fase 8: UTM e provenienza su ogni prenotazione, report mensile con CSV per il file Excel, test end-to-end
 
 Dati da confermare: orari di default e CAP in `src/lib/site.ts` (gli orari poi vivono nella tabella Settings), contatti in `.env`, e la citazione di Giulia in `src/app/page.tsx`.
+
+## Link tracciati (report mensile)
+
+Ogni prenotazione salva da dove arriva il cliente. Usa questi link:
+
+| Dove | Link |
+|---|---|
+| Bio Instagram | `https://TUO-SITO/?utm_source=instagram&utm_medium=bio` |
+| Bio TikTok | `https://TUO-SITO/?utm_source=tiktok&utm_medium=bio` |
+| Profilo Google | `https://TUO-SITO/?utm_source=google&utm_medium=gbp` |
+| Sponsorizzata Meta | `https://TUO-SITO/?utm_source=instagram&utm_medium=paid&utm_campaign=NOME-CAMPAGNA` |
+
+Senza UTM il sito prova a riconoscere la provenienza dal referrer (Instagram, Facebook, TikTok, Google).
+
+In admin, Altro, Report mensile: indicatori del mese e due CSV (separatore `;`) con le colonne dei
+fogli "Mensile" e "Clienti" di `docs/LevelUp_Monitoraggio_Marketing.xlsx`.
