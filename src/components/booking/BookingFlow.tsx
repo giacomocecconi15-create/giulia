@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SezioneListino } from "@/lib/data";
 import { formatEuro, formatPrezzo } from "@/lib/format";
+import CardGuarantee, { type CardGuaranteeHandle } from "./CardGuarantee";
 import LoginForm, { type LoggedCustomer } from "./LoginForm";
 
 type Step = "servizi" | "orario" | "accesso" | "conferma" | "fatto";
@@ -58,6 +59,7 @@ export default function BookingFlow({
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<Done | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const cardRef = useRef<CardGuaranteeHandle>(null);
 
   const selectedServices = allServices.filter((s) => selected.includes(s.id));
   const subtotal = selectedServices.reduce((a, s) => a + s.priceCents, 0);
@@ -139,6 +141,10 @@ export default function BookingFlow({
     if (!slot) return;
     setSubmitting(true);
     setError(null);
+    if (!reschedule && cardRef.current && !(await cardRef.current.ensureCard())) {
+      setSubmitting(false);
+      return;
+    }
     const res = reschedule
       ? await fetch(`/api/bookings/${reschedule.bookingId}`, {
           method: "PATCH",
@@ -476,10 +482,7 @@ export default function BookingFlow({
           )}
           <p className="mt-2 text-sm text-ink-3">Paghi in salone, dopo il servizio.</p>
 
-          <div className="mt-8 border border-dashed border-line bg-tint p-4 text-sm text-ink-2">
-            <strong className="text-ink">Carta a garanzia.</strong> Qui salverai una carta: nessun addebito e nessun importo
-            bloccato. In arrivo nella prossima fase.
-          </div>
+          <CardGuarantee ref={cardRef} onError={setError} />
 
           <label className="mt-6 flex cursor-pointer items-start gap-3">
             <input

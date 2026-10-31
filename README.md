@@ -39,7 +39,7 @@ Apri http://localhost:3000.
 - [x] Fase 2: database Prisma + Postgres (modello §5), seed da `src/data/servizi.json`, pagina /listino dal database
 - [x] Fase 3: flusso di prenotazione (servizi, disponibilità, accesso simulato, conferma con lock)
 - [x] Fase 4: OTP via WhatsApp Cloud API (attivo con le chiavi), area Account (sposta, disdici, carnet, storico, riprenota)
-- [ ] Fase 5: Stripe SetupIntent, Termini
+- [x] Fase 5: carta a garanzia con Stripe SetupIntent (attiva con le chiavi), addebito off-session, Termini e Privacy (bozze)
 - [ ] Fase 6: messaggi WhatsApp e cron
 - [ ] Fase 7: admin
 - [ ] Fase 8: UTM, CSV, test end-to-end

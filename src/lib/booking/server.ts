@@ -1,6 +1,7 @@
 import "server-only";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
+import { stripeConfigured } from "../stripe";
 import { defaultOpeningHours, promo, type OpeningHours } from "../site";
 import { addDays, romeLocalToUtc, romeYmd } from "../time";
 import { bookingDurationMinutes, computeAvailability, isSlotAvailable, type Interval } from "./availability";
@@ -19,6 +20,8 @@ export async function loadSettings() {
     discountPct: s?.firstVisitDiscountPct ?? promo.discountPercent,
     promoEndDate: s?.promoEndDate ?? new Date(`${promo.endDate}T00:00:00Z`),
     freeCancellationHours: s?.freeCancellationHours ?? 24,
+    maxLateMinutes: s?.maxLateMinutes ?? 15,
+    recallDays: s?.recallDays ?? 45,
   };
 }
 
@@ -149,9 +152,15 @@ export async function createBooking(input: {
   utmMedium?: string | null;
   utmCampaign?: string | null;
   fromWaitlist?: boolean;
+  /** Prenotazione inserita da Giulia (telefono): niente carta, niente preavviso */
+  byAdmin?: boolean;
   now?: Date;
 }) {
   const now = input.now ?? new Date();
+  if (!input.byAdmin && stripeConfigured()) {
+    const c = await prisma.customer.findUnique({ where: { id: input.customerId }, select: { stripePaymentMethodId: true } });
+    if (!c?.stripePaymentMethodId) throw new BookingError("card_required");
+  }
   const [services, settings] = await Promise.all([servicesFor(input.serviceIds), loadSettings()]);
   const durationMin = bookingDurationMinutes(services.map((s) => s.durationMin), settings.slotMinutes);
   const end = new Date(input.start.getTime() + durationMin * 60_000);
@@ -170,8 +179,8 @@ export async function createBooking(input: {
         slotMinutes: settings.slotMinutes,
         busy,
         now,
-        minLeadMinutes: settings.minLeadMinutes,
-        lastDay: addDays(romeYmd(now), settings.bookingHorizonDays),
+        minLeadMinutes: input.byAdmin ? 0 : settings.minLeadMinutes,
+        lastDay: input.byAdmin ? "9999-12-31" : addDays(romeYmd(now), settings.bookingHorizonDays),
       });
       if (!ok) throw new BookingError("slot_unavailable");
 
@@ -194,6 +203,7 @@ export async function createBooking(input: {
           utmMedium: input.utmMedium ?? null,
           utmCampaign: input.utmCampaign ?? null,
           fromWaitlist: input.fromWaitlist ?? false,
+          createdByAdmin: input.byAdmin ?? false,
           items: { create: services.map((s) => ({ serviceId: s.id, priceCents: s.priceCents })) },
         },
         include: { customer: true, items: { include: { service: { select: { name: true } } } } },
