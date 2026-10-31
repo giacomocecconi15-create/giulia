@@ -1,5 +1,6 @@
 import { handleError, json, parseServiceIds } from "@/lib/api";
 import { getAvailability } from "@/lib/booking/server";
+import { advanceWaitlist } from "@/lib/booking/waitlist";
 import { labelGiorno, labelGiornoLungo } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +12,8 @@ export async function GET(req: Request) {
   const from = url.searchParams.get("from") ?? "";
   const days = Math.min(Math.max(Number(url.searchParams.get("days")) || 7, 1), 14);
   try {
+    // Avvisi scaduti: passa al successivo anche se il cron non è ancora passato
+    await advanceWaitlist().catch((e) => console.error(e));
     const { days: result, lastDay, today } = await getAvailability(
       serviceIds,
       /^\d{4}-\d{2}-\d{2}$/.test(from) ? from : "1970-01-01",

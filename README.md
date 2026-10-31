@@ -31,6 +31,24 @@ Finché WhatsApp non è collegato, il codice di accesso viene stampato nella con
 
 Ogni branch pubblicato su GitHub ottiene un indirizzo di anteprima.
 
+## Messaggi automatici (cron)
+
+Tutti i compiti periodici passano da `/api/cron/tick`: lista d'attesa, promemoria 24 ore prima,
+e una volta al giorno dopo le 18 richiami (45 giorni) e richieste di recensione.
+
+- Imposta `CRON_SECRET`.
+- Vercel gratuito permette un cron al giorno (già in `vercel.json`): basta per richiami e recensioni,
+  non per i promemoria. Per quelli chiama `https://TUO-SITO/api/cron/tick?key=CRON_SECRET`
+  ogni 5-15 minuti da un servizio gratuito come cron-job.org, oppure passa a Vercel Pro e metti
+  `"schedule": "*/10 * * * *"`.
+
+## WhatsApp
+
+1. In Meta Business Manager crea i template elencati in `src/lib/whatsapp.ts` (lingua italiano).
+   Il promemoria ha tre risposte rapide (Confermo, Sposta, Disdici), l'avviso della lista d'attesa una (Prendo).
+2. Inserisci `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`.
+3. Webhook dell'app Meta: `https://TUO-SITO/api/whatsapp/webhook`, campo `messages`.
+
 Apri http://localhost:3000.
 
 ## Stato
@@ -40,7 +58,7 @@ Apri http://localhost:3000.
 - [x] Fase 3: flusso di prenotazione (servizi, disponibilità, accesso simulato, conferma con lock)
 - [x] Fase 4: OTP via WhatsApp Cloud API (attivo con le chiavi), area Account (sposta, disdici, carnet, storico, riprenota)
 - [x] Fase 5: carta a garanzia con Stripe SetupIntent (attiva con le chiavi), addebito off-session, Termini e Privacy (bozze)
-- [ ] Fase 6: messaggi WhatsApp e cron
+- [x] Fase 6: conferma, promemoria 24h con risposte rapide, lista d'attesa, richiamo 45 giorni, recensioni, webhook WhatsApp
 - [ ] Fase 7: admin
 - [ ] Fase 8: UTM, CSV, test end-to-end
 

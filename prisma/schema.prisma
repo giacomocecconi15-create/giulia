@@ -187,6 +187,8 @@ model Settings {
   /// Preavviso minimo per prenotare online
   minLeadMinutes         Int      @default(60)
   timezone               String   @default("Europe/Rome")
+  /// Ultima esecuzione dei compiti giornalieri (richiami, recensioni)
+  lastDailyRunAt         DateTime?
   updatedAt              DateTime @updatedAt
 }
 
