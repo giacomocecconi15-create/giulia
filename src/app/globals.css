@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+/* Design system Level Up (docs/HANDOFF.md §4) */
+@theme {
+  --color-bg: #fcffff;
+  --color-ink: #0e1a22;
+  --color-ink-2: #2c3b44;
+  --color-ink-3: #4a5a63;
+  --color-line: #d6e2e7;
+  --color-tint: #eef6f9;
+  --color-blue: #0593c6;
+  --color-magenta: #d83995;
+  --color-magenta-text: #a31a6b;
+
+  --font-display: var(--font-gloock), Georgia, serif;
+  --font-sans: var(--font-karla), system-ui, sans-serif;
+
+  /* Angoli netti ovunque */
+  --radius-*: initial;
+  --shadow-*: initial;
+
+  --animate-oscillate: oscillate 6s ease-in-out infinite;
+  --animate-oscillate-bg: oscillate-bg 6s ease-in-out infinite;
+  --animate-oscillate-border: oscillate-border 6s ease-in-out infinite;
+  --animate-marquee: marquee 40s linear infinite;
+  --animate-skeleton: skeleton 1.4s ease-in-out infinite;
+
+  @keyframes oscillate {
+    0%, 100% { color: var(--color-blue); }
+    50% { color: var(--color-magenta); }
+  }
+  @keyframes oscillate-bg {
+    0%, 100% { background-color: var(--color-blue); }
+    50% { background-color: var(--color-magenta); }
+  }
+  @keyframes oscillate-border {
+    0%, 100% { border-color: var(--color-blue); }
+    50% { border-color: var(--color-magenta); }
+  }
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  @keyframes skeleton {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-blue);
+  outline-offset: 2px;
+}
+
+/* Entrata morbida dei blocchi: attiva solo con JS (classe .js su <html>) */
+.js .reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 0.7s ease,
+    transform 0.7s ease;
+}
+.js .reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .js .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}

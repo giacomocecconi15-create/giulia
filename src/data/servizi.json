@@ -1,0 +1,35 @@
+{
+  "nota": "durationMin serve solo all'agenda di Giulia e non va mai mostrato al cliente. promoEligible = rientra nello sconto prima visita.",
+  "sezioni": [
+    { "id": "taglio", "nome": "Taglio e piega", "servizi": [
+      { "id": "taglio-donna", "nome": "Taglio donna", "prezzo": 20, "durationMin": 30, "promoEligible": true },
+      { "id": "taglio-uomo", "nome": "Taglio uomo", "prezzo": 25, "durationMin": 30, "promoEligible": true },
+      { "id": "piega", "nome": "Piega", "prezzo": 23, "durationMin": 40, "promoEligible": true },
+      { "id": "asciugatura", "nome": "Asciugatura", "prezzo": 10, "durationMin": 15, "promoEligible": false }
+    ]},
+    { "id": "colore", "nome": "Colore", "servizi": [
+      { "id": "colore-ricrescita", "nome": "Colore ricrescita", "prezzo": 35, "durationMin": 60, "promoEligible": false },
+      { "id": "colore-completo", "nome": "Colore completo", "prezzo": 30, "durationMin": 75, "promoEligible": false, "daVerificare": "costa meno della ricrescita" },
+      { "id": "tonalizzante", "nome": "Tonalizzante", "prezzo": 20, "durationMin": 30, "promoEligible": false, "daVerificare": "nel listino originale: totalizzante" },
+      { "id": "permanente", "nome": "Permanente", "prezzo": 50, "prezzoMax": 80, "prezzoDa": true, "durationMin": 90, "promoEligible": false }
+    ]},
+    { "id": "schiariture", "nome": "Schiariture", "servizi": [
+      { "id": "airtouch", "nome": "Airtouch", "prezzo": 100, "durationMin": 180, "promoEligible": false },
+      { "id": "bodylights", "nome": "Bodylights", "prezzo": 100, "durationMin": 150, "promoEligible": false },
+      { "id": "meches", "nome": "Mèches", "prezzo": 60, "durationMin": 90, "promoEligible": false },
+      { "id": "balayage", "nome": "Balayage", "prezzo": 30, "durationMin": 120, "promoEligible": false, "daVerificare": "prezzo basso rispetto alle altre schiariture" }
+    ]},
+    { "id": "trattamenti", "nome": "Trattamenti", "servizi": [
+      { "id": "cheratina", "nome": "Cheratina lisciante", "prezzo": 200, "durationMin": 180, "promoEligible": false },
+      { "id": "trattamento-lunghezze", "nome": "Trattamento lunghezze", "prezzo": 10, "durationMin": 15, "promoEligible": false },
+      { "id": "trattamento-cute", "nome": "Trattamento cute", "prezzo": 10, "durationMin": 15, "promoEligible": false }
+    ]},
+    { "id": "barba", "nome": "Barba", "servizi": [
+      { "id": "rasatura-barba", "nome": "Rasatura barba", "prezzo": 15, "durationMin": 20, "promoEligible": false },
+      { "id": "modellatura-barba", "nome": "Modellatura barba", "prezzo": 10, "durationMin": 15, "promoEligible": false }
+    ]},
+    { "id": "extra", "nome": "Extra", "servizi": [
+      { "id": "sopracciglia", "nome": "Sopracciglia", "prezzo": 4, "durationMin": 10, "promoEligible": false }
+    ]}
+  ]
+}
