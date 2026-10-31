@@ -30,7 +30,7 @@ export type AvailabilityParams = {
 };
 
 export type Slot = { start: Date; end: Date; time: string };
-export type DayAvailability = { date: string; slots: Slot[] };
+export type DayAvailability = { date: string; open: boolean; slots: Slot[] };
 
 const toMin = (hhmm: string) => {
   const [h, m] = hhmm.split(":").map(Number);
@@ -69,7 +69,7 @@ export function computeAvailability(p: AvailabilityParams): DayAvailability[] {
         slots.push({ start, end, time: romeHm(start) });
       }
     }
-    result.push({ date, slots });
+    result.push({ date, open: fasce.length > 0, slots });
   }
   return result;
 }

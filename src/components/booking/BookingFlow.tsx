@@ -8,7 +8,7 @@ import LoginForm, { type LoggedCustomer } from "./LoginForm";
 
 type Step = "servizi" | "orario" | "accesso" | "conferma" | "fatto";
 type Slot = { start: string; time: string };
-type Day = { date: string; label: string; longLabel: string; slots: Slot[] };
+type Day = { date: string; label: string; longLabel: string; open: boolean; slots: Slot[] };
 type Quote = {
   totalCents: number;
   discountCents: number;
@@ -17,6 +17,7 @@ type Quote = {
   items: { id: string; name: string; priceCents: number; priceFrom: boolean }[];
 };
 type Done = { date: string; time: string; services: string[]; finalCents: number; discountCents: number };
+export type Reschedule = { bookingId: string; serviceIds: string[]; currentLabel: string };
 
 const DAYS_PER_PAGE = 7;
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -27,16 +28,22 @@ export default function BookingFlow({
   discountPct,
   initialCustomer,
   preselected,
+  reschedule,
 }: {
   listino: SezioneListino[];
   promoActive: boolean;
   discountPct: number;
   initialCustomer: LoggedCustomer | null;
   preselected: string[];
+  reschedule?: Reschedule | null;
 }) {
   const allServices = useMemo(() => listino.flatMap((s) => s.services), [listino]);
-  const [step, setStep] = useState<Step>("servizi");
-  const [selected, setSelected] = useState<string[]>(() => preselected.filter((id) => allServices.some((s) => s.id === id)));
+  const [step, setStep] = useState<Step>(reschedule ? "orario" : "servizi");
+  const [selected, setSelected] = useState<string[]>(() =>
+    reschedule ? reschedule.serviceIds : preselected.filter((id) => allServices.some((s) => s.id === id)),
+  );
+  const [pendingWaitlist, setPendingWaitlist] = useState<string | null>(null);
+  const [waitlistDone, setWaitlistDone] = useState<string[]>([]);
   const [customer, setCustomer] = useState<LoggedCustomer | null>(initialCustomer);
   const [from, setFrom] = useState<string | null>(null);
   const [days, setDays] = useState<Day[] | null>(null);
@@ -113,15 +120,36 @@ export default function BookingFlow({
     loadDays(next);
   };
 
+  const joinWaitlist = async (date: string) => {
+    if (!customer) {
+      setPendingWaitlist(date);
+      setStep("accesso");
+      return;
+    }
+    const res = await fetch("/api/waitlist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ date, serviceIds: selected }),
+    });
+    if (res.ok) setWaitlistDone((d) => [...d, date]);
+    else setNotice((await res.json()).message ?? "Iscrizione non riuscita. Riprova.");
+  };
+
   const confirm = async () => {
     if (!slot) return;
     setSubmitting(true);
     setError(null);
-    const res = await fetch("/api/bookings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ serviceIds: selected, start: slot.start, acceptTerms: terms }),
-    });
+    const res = reschedule
+      ? await fetch(`/api/bookings/${reschedule.bookingId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ start: slot.start }),
+        })
+      : await fetch("/api/bookings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ serviceIds: selected, start: slot.start, acceptTerms: terms }),
+        });
     const data = await res.json();
     setSubmitting(false);
     if (res.status === 409) {
@@ -143,12 +171,14 @@ export default function BookingFlow({
     setStep("fatto");
   };
 
-  const steps: { id: Step; label: string }[] = [
-    { id: "servizi", label: "Servizi" },
-    { id: "orario", label: "Giorno e ora" },
-    ...(initialCustomer ? [] : [{ id: "accesso" as Step, label: "Accesso" }]),
-    { id: "conferma", label: "Conferma" },
-  ];
+  const steps: { id: Step; label: string }[] = reschedule
+    ? [{ id: "orario", label: "Nuovo giorno e ora" }]
+    : [
+        { id: "servizi", label: "Servizi" },
+        { id: "orario", label: "Giorno e ora" },
+        ...(initialCustomer ? [] : [{ id: "accesso" as Step, label: "Accesso" }]),
+        { id: "conferma", label: "Conferma" },
+      ];
   const currentIdx = steps.findIndex((s) => s.id === step);
   const day = days?.[dayIdx];
   const canGoBack = from && today && from > today;
@@ -216,9 +246,10 @@ export default function BookingFlow({
       {step === "orario" && (
         <section aria-labelledby="titolo-step" className="mt-10">
           <h1 id="titolo-step" ref={headingRef} tabIndex={-1} className="font-display text-4xl outline-none md:text-5xl">
-            Quando vieni?
+            {reschedule ? "Spostiamo l'appuntamento" : "Quando vieni?"}
           </h1>
           <p className="mt-2 text-ink-2">{selectedServices.map((s) => s.name).join(", ")}</p>
+          {reschedule && <p className="mt-1 text-ink-2">Ora: {reschedule.currentLabel}</p>}
           {notice && (
             <p role="alert" className="mt-4 border-l-4 border-magenta bg-tint px-4 py-3">
               {notice}
@@ -265,6 +296,7 @@ export default function BookingFlow({
                 <div role="radiogroup" aria-label="Giorno" className="mt-3 grid grid-cols-7 gap-1">
                   {days.map((d, i) => {
                     const free = d.slots.length > 0;
+                    const selectable = free || d.open;
                     const [wd, num, mon] = d.label.split(" ");
                     return (
                       <button
@@ -272,8 +304,8 @@ export default function BookingFlow({
                         type="button"
                         role="radio"
                         aria-checked={i === dayIdx}
-                        aria-label={`${d.longLabel}${free ? "" : ", nessun orario libero"}`}
-                        disabled={!free}
+                        aria-label={`${d.longLabel}${free ? "" : d.open ? ", pieno" : ", chiuso"}`}
+                        disabled={!selectable}
                         onClick={() => {
                           setDayIdx(i);
                           setSlot(null);
@@ -283,7 +315,9 @@ export default function BookingFlow({
                             ? "border-ink bg-ink text-bg"
                             : free
                               ? "border-line hover:border-ink"
-                              : "border-transparent text-ink-3 line-through"
+                              : d.open
+                                ? "border-line text-ink-3 line-through hover:border-ink"
+                                : "border-transparent text-ink-3 line-through"
                         }`}
                       >
                         <span className="capitalize">{wd}</span>
@@ -319,8 +353,37 @@ export default function BookingFlow({
                       })}
                     </div>
                   </fieldset>
+                ) : day?.open ? (
+                  <p className="mt-8 text-ink-2">
+                    <span className="font-semibold text-ink">{cap(day.longLabel)}</span> è pieno.
+                  </p>
                 ) : (
                   <p className="mt-8 text-ink-2">Nessun orario libero in questa settimana. Prova la settimana dopo.</p>
+                )}
+
+                {day?.open && !reschedule && (
+                  <div className="mt-8 border border-line p-4">
+                    {waitlistDone.includes(day.date) ? (
+                      <p role="status">
+                        Sei in lista d&apos;attesa per {day.longLabel}. Se si libera un posto ti scriviamo su WhatsApp e te lo
+                        teniamo per 15 minuti.
+                      </p>
+                    ) : (
+                      <>
+                        <p>
+                          {day.slots.length > 0 ? "Nessun orario ti va bene?" : "Vuoi comunque venire questo giorno?"} Mettiti in
+                          lista d&apos;attesa: se si libera un posto {day.longLabel} ti avvisiamo su WhatsApp.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => joinWaitlist(day.date)}
+                          className="mt-3 min-h-11 border border-ink px-4 font-semibold transition-colors hover:bg-ink hover:text-bg"
+                        >
+                          Avvisami se si libera
+                        </button>
+                      </>
+                    )}
+                  </div>
                 )}
               </>
             )}
@@ -339,8 +402,19 @@ export default function BookingFlow({
           </p>
           <div className="mt-8 max-w-sm">
             <LoginForm
-              onSuccess={(c) => {
+              onSuccess={async (c) => {
                 setCustomer(c);
+                if (pendingWaitlist) {
+                  const res = await fetch("/api/waitlist", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ date: pendingWaitlist, serviceIds: selected }),
+                  });
+                  if (res.ok) setWaitlistDone((d) => [...d, pendingWaitlist]);
+                  setPendingWaitlist(null);
+                  setStep("orario");
+                  return;
+                }
                 setStep("conferma");
               }}
             />
@@ -441,7 +515,7 @@ export default function BookingFlow({
         <section aria-labelledby="titolo-step" className="mt-6 text-center">
           <span className="mx-auto block h-1 w-16 animate-oscillate-bg" aria-hidden />
           <h1 id="titolo-step" ref={headingRef} tabIndex={-1} className="mt-6 font-display text-5xl outline-none">
-            Ci vediamo!
+            {reschedule ? "Appuntamento spostato" : "Ci vediamo!"}
           </h1>
           <p className="mt-4 text-xl">
             {cap(done.date)}, ore <strong>{done.time}</strong>
@@ -484,7 +558,7 @@ export default function BookingFlow({
               {step === "orario" && (
                 <p>{slot ? <strong>{`${cap(slot.longLabel)}, ${slot.time}`}</strong> : <span className="text-ink-3">Scegli un orario</span>}</p>
               )}
-              {step !== "servizi" && (
+              {step !== "servizi" && !reschedule && (
                 <button
                   type="button"
                   onClick={() => setStep(step === "conferma" ? "orario" : "servizi")}
@@ -499,7 +573,12 @@ export default function BookingFlow({
                 Scegli l&apos;orario
               </PrimaryButton>
             )}
-            {step === "orario" && (
+            {step === "orario" && reschedule && (
+              <PrimaryButton disabled={!slot || submitting} onClick={confirm}>
+                {submitting ? "Spostamento in corso" : "Sposta qui"}
+              </PrimaryButton>
+            )}
+            {step === "orario" && !reschedule && (
               <PrimaryButton disabled={!slot} onClick={() => setStep(customer ? "conferma" : "accesso")}>
                 Prenota
               </PrimaryButton>

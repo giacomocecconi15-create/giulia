@@ -24,6 +24,7 @@ export async function GET(req: Request) {
         date: d.date,
         label: labelGiorno(d.date),
         longLabel: labelGiornoLungo(d.date),
+        open: d.open,
         slots: d.slots.map((s) => ({ start: s.start.toISOString(), time: s.time })),
       })),
     });

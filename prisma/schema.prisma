@@ -41,6 +41,8 @@ model Customer {
   marketingConsentAt    DateTime?
   stripeCustomerId      String?         @unique
   stripePaymentMethodId String?
+  /// Ultimo richiamo "non ti vediamo da 45 giorni"
+  lastRecallAt          DateTime?
   bookings              Booking[]
   waitlist              WaitlistEntry[]
   punchCard             PunchCard?
@@ -95,6 +97,13 @@ model Booking {
   /// Slot recuperato dalla lista d'attesa
   fromWaitlist       Boolean       @default(false)
   reminderSentAt     DateTime?
+  /// Il cliente ha risposto "Confermo" al promemoria
+  customerConfirmedAt DateTime?
+  cancelledAt        DateTime?
+  /// Disdetta nelle ultime ore (entro la finestra gratuita): possibile addebito
+  lateCancellation   Boolean       @default(false)
+  completedAt        DateTime?
+  reviewRequestedAt  DateTime?
   chargedAt          DateTime?
   stripePaymentIntentId String?
   createdAt          DateTime      @default(now())
@@ -129,7 +138,10 @@ model WaitlistEntry {
   notifiedAt DateTime?
   /// Slot tenuto da parte durante l'avviso (15 minuti)
   heldStart  DateTime?
+  heldEnd    DateTime?
   heldUntil  DateTime?
+  /// Durata richiesta in minuti (calcolata all'iscrizione)
+  durationMin Int      @default(30)
   status     WaitlistStatus @default(waiting)
 
   @@index([date, status, createdAt])

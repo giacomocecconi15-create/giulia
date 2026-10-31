@@ -1,4 +1,5 @@
 import Link from "next/link";
+import AccountLink from "./AccountLink";
 import MobileMenu from "./MobileMenu";
 
 export const navLinks = [
@@ -28,12 +29,7 @@ export default function Header() {
           </ul>
         </nav>
         <div className="flex items-center gap-1.5 sm:gap-2">
-          <Link
-            href="/account"
-            className="inline-flex min-h-11 items-center border border-ink px-3 text-sm font-semibold transition-colors hover:bg-ink hover:text-bg sm:px-4 sm:text-base"
-          >
-            Accedi
-          </Link>
+          <AccountLink className="inline-flex min-h-11 items-center border border-ink px-3 text-sm font-semibold transition-colors hover:bg-ink hover:text-bg sm:px-4 sm:text-base" />
           <Link
             href="/prenota"
             className="inline-flex min-h-11 items-center border border-ink bg-ink px-3 text-sm font-semibold text-bg sm:px-4 sm:text-base transition-colors hover:border-blue hover:bg-blue hover:text-ink"

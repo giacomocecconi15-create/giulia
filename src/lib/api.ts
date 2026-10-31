@@ -20,10 +20,13 @@ const messages: Record<BookingError["code"], string> = {
   invalid_services: "Uno dei servizi scelti non è più disponibile.",
   slot_unavailable: "Questo orario non è più disponibile. Scegline un altro.",
   terms_required: "Per confermare devi accettare i Termini.",
+  not_found: "Prenotazione non trovata.",
+  too_late: "Non è più possibile modificare online questa prenotazione. Scrivici su WhatsApp.",
+  card_required: "Per confermare serve una carta a garanzia.",
 };
 
 export function handleError(e: unknown) {
-  if (e instanceof BookingError) return json({ error: e.code, message: messages[e.code] }, e.code === "slot_unavailable" ? 409 : 400);
+  if (e instanceof BookingError) return json({ error: e.code, message: messages[e.code] }, e.code === "slot_unavailable" ? 409 : e.code === "not_found" ? 404 : 400);
   console.error(e);
   return json({ error: "server_error", message: "Qualcosa non ha funzionato. Riprova tra poco." }, 500);
 }

@@ -24,7 +24,14 @@ export async function loadSettings() {
 
 export class BookingError extends Error {
   constructor(
-    public code: "no_services" | "invalid_services" | "slot_unavailable" | "terms_required",
+    public code:
+      | "no_services"
+      | "invalid_services"
+      | "slot_unavailable"
+      | "terms_required"
+      | "not_found"
+      | "too_late"
+      | "card_required",
     message?: string,
   ) {
     super(message ?? code);
@@ -40,15 +47,41 @@ async function servicesFor(ids: string[]) {
   return services;
 }
 
-async function busyBetween(db: Prisma.TransactionClient, from: Date, to: Date): Promise<Interval[]> {
-  const [bookings, blocks] = await Promise.all([
+export async function busyBetween(
+  db: Prisma.TransactionClient,
+  from: Date,
+  to: Date,
+  opts: { excludeBookingId?: string; excludeHoldForCustomer?: string } = {},
+): Promise<Interval[]> {
+  const now = new Date();
+  const [bookings, blocks, holds] = await Promise.all([
     db.booking.findMany({
-      where: { status: { in: [...OCCUPYING] }, start: { lt: to }, end: { gt: from } },
+      where: {
+        status: { in: [...OCCUPYING] },
+        start: { lt: to },
+        end: { gt: from },
+        ...(opts.excludeBookingId && { id: { not: opts.excludeBookingId } }),
+      },
       select: { start: true, end: true },
     }),
     db.block.findMany({ where: { start: { lt: to }, end: { gt: from } }, select: { start: true, end: true } }),
+    // Slot tenuti da parte per chi è stato avvisato dalla lista d'attesa (15 minuti)
+    db.waitlistEntry.findMany({
+      where: {
+        status: "notified",
+        heldUntil: { gt: now },
+        heldStart: { lt: to },
+        heldEnd: { gt: from },
+        ...(opts.excludeHoldForCustomer && { customerId: { not: opts.excludeHoldForCustomer } }),
+      },
+      select: { heldStart: true, heldEnd: true },
+    }),
   ]);
-  return [...bookings, ...blocks];
+  return [
+    ...bookings,
+    ...blocks,
+    ...holds.map((h) => ({ start: h.heldStart!, end: h.heldEnd! })),
+  ];
 }
 
 /** Disponibilità per i servizi scelti, a partire da un giorno. */
@@ -113,6 +146,9 @@ export async function createBooking(input: {
   serviceIds: string[];
   start: Date;
   source?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
+  fromWaitlist?: boolean;
   now?: Date;
 }) {
   const now = input.now ?? new Date();
@@ -125,7 +161,9 @@ export async function createBooking(input: {
     async (tx) => {
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(4242)::text`;
 
-      const busy = await busyBetween(tx, romeLocalToUtc(day, "00:00"), romeLocalToUtc(addDays(day, 1), "00:00"));
+      const busy = await busyBetween(tx, romeLocalToUtc(day, "00:00"), romeLocalToUtc(addDays(day, 1), "00:00"), {
+        excludeHoldForCustomer: input.customerId,
+      });
       const ok = isSlotAvailable(input.start, {
         durationMin,
         openingHours: settings.openingHours,
@@ -153,11 +191,77 @@ export async function createBooking(input: {
           totalPriceCents: quote.totalCents,
           discountCents: quote.discountCents,
           source: input.source ?? "online",
+          utmMedium: input.utmMedium ?? null,
+          utmCampaign: input.utmCampaign ?? null,
+          fromWaitlist: input.fromWaitlist ?? false,
           items: { create: services.map((s) => ({ serviceId: s.id, priceCents: s.priceCents })) },
         },
-        include: { items: { include: { service: { select: { name: true } } } } },
+        include: { customer: true, items: { include: { service: { select: { name: true } } } } },
       });
     },
     { isolationLevel: "ReadCommitted", timeout: 10_000 },
   );
+}
+
+/** Prenotazione del cliente, solo se sua. */
+async function ownBooking(bookingId: string, customerId: string) {
+  const b = await prisma.booking.findUnique({ where: { id: bookingId }, include: { items: true } });
+  if (!b || b.customerId !== customerId) throw new BookingError("not_found");
+  return b;
+}
+
+/**
+ * Disdetta dal cliente. Sempre possibile prima dell'inizio; nelle ultime
+ * freeCancellationHours viene segnata come tardiva (possibile addebito).
+ */
+export async function cancelBooking(bookingId: string, customerId: string, now = new Date()) {
+  const b = await ownBooking(bookingId, customerId);
+  if (b.status !== "confirmed" || b.start <= now) throw new BookingError("too_late");
+  const settings = await loadSettings();
+  const late = b.start.getTime() - now.getTime() < settings.freeCancellationHours * 3_600_000;
+  return prisma.booking.update({
+    where: { id: b.id },
+    data: { status: "cancelled", cancelledAt: now, lateCancellation: late },
+    include: { customer: true, items: { include: { service: true } } },
+  });
+}
+
+/** Sposta una prenotazione: online solo prima della finestra di disdetta gratuita. */
+export async function rescheduleBooking(bookingId: string, customerId: string, newStart: Date, now = new Date()) {
+  const b = await ownBooking(bookingId, customerId);
+  const settings = await loadSettings();
+  if (b.status !== "confirmed" || b.start.getTime() - now.getTime() < settings.freeCancellationHours * 3_600_000) {
+    throw new BookingError("too_late");
+  }
+  const services = await prisma.service.findMany({ where: { id: { in: b.items.map((i) => i.serviceId) } } });
+  const durationMin = bookingDurationMinutes(services.map((s) => s.durationMin), settings.slotMinutes);
+  const day = romeYmd(newStart);
+  const previous = { start: b.start, end: b.end };
+
+  const updated = await prisma.$transaction(
+    async (tx) => {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(4242)::text`;
+      const busy = await busyBetween(tx, romeLocalToUtc(day, "00:00"), romeLocalToUtc(addDays(day, 1), "00:00"), {
+        excludeBookingId: b.id,
+        excludeHoldForCustomer: customerId,
+      });
+      const ok = isSlotAvailable(newStart, {
+        durationMin,
+        openingHours: settings.openingHours,
+        slotMinutes: settings.slotMinutes,
+        busy,
+        now,
+        minLeadMinutes: settings.minLeadMinutes,
+        lastDay: addDays(romeYmd(now), settings.bookingHorizonDays),
+      });
+      if (!ok) throw new BookingError("slot_unavailable");
+      return tx.booking.update({
+        where: { id: b.id },
+        data: { start: newStart, end: new Date(newStart.getTime() + durationMin * 60_000), reminderSentAt: null, customerConfirmedAt: null },
+        include: { customer: true, items: { include: { service: true } } },
+      });
+    },
+    { isolationLevel: "ReadCommitted", timeout: 10_000 },
+  );
+  return { updated, previous };
 }

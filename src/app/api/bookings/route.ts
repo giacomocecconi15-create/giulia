@@ -1,4 +1,5 @@
 import { handleError, json, parseServiceIds } from "@/lib/api";
+import { onBookingCreated } from "@/lib/booking/events";
 import { BookingError, createBooking } from "@/lib/booking/server";
 import { getCurrentCustomer } from "@/lib/session";
 import { labelGiornoLungo, romeHm, romeYmd } from "@/lib/time";
@@ -21,6 +22,7 @@ export async function POST(req: Request) {
       serviceIds: parseServiceIds((body.serviceIds ?? []).join(",")),
       start,
     });
+    await onBookingCreated(booking);
     return json(
       {
         id: booking.id,

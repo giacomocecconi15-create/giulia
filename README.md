@@ -38,7 +38,7 @@ Apri http://localhost:3000.
 - [x] Fase 1: Next.js + TypeScript + Tailwind, design system, Home, banner cookie, JSON-LD, robots.txt, sitemap
 - [x] Fase 2: database Prisma + Postgres (modello §5), seed da `src/data/servizi.json`, pagina /listino dal database
 - [x] Fase 3: flusso di prenotazione (servizi, disponibilità, accesso simulato, conferma con lock)
-- [ ] Fase 4: login OTP WhatsApp e area Account
+- [x] Fase 4: OTP via WhatsApp Cloud API (attivo con le chiavi), area Account (sposta, disdici, carnet, storico, riprenota)
 - [ ] Fase 5: Stripe SetupIntent, Termini
 - [ ] Fase 6: messaggi WhatsApp e cron
 - [ ] Fase 7: admin
