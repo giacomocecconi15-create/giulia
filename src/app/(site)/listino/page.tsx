@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import CatalogoServizi from "@/components/CatalogoServizi";
 import JsonLd from "@/components/JsonLd";
+import { catalogo, categorieDaSezione } from "@/data/catalogo";
+import { formatPrezzo } from "@/lib/format";
 import ListinoTabelle from "@/components/ListinoTabelle";
 import { getInfoSalone, getListino } from "@/lib/data";
 import { offerCatalogSchema } from "@/lib/schema";
@@ -14,6 +17,17 @@ export const metadata: Metadata = {
 
 export default async function Listino() {
   const [listino, info] = await Promise.all([getListino(), getInfoSalone()]);
+  const voci = listino.flatMap((sezione) =>
+    sezione.services.map((s) => ({
+      id: s.id,
+      name: s.name,
+      priceLabel: formatPrezzo(s),
+      promoEligible: s.promoEligible,
+      categorie: catalogo[s.id]?.categorie ?? categorieDaSezione(sezione.id),
+      descrizione: catalogo[s.id]?.descrizione ?? sezione.name,
+      video: catalogo[s.id]?.video,
+    })),
+  );
   return (
     <main id="contenuto" className="mx-auto max-w-6xl px-4 py-16 md:px-8 md:py-20">
       <JsonLd data={offerCatalogSchema(listino)} />
@@ -31,7 +45,12 @@ export default async function Listino() {
           </li>
         )}
       </ul>
-      <nav aria-label="Sezioni del listino" className="reveal mt-8">
+      <CatalogoServizi voci={voci} promoActive={info.promoActive} discountPct={info.discountPct} />
+
+      <h2 id="prezzi" className="reveal mt-20 font-display text-4xl">
+        Tutti i prezzi
+      </h2>
+      <nav aria-label="Sezioni del listino" className="reveal mt-6">
         <ul className="flex flex-wrap gap-2">
           {listino.map((s) => (
             <li key={s.id}>
@@ -43,7 +62,7 @@ export default async function Listino() {
         </ul>
       </nav>
       <div className="mt-12">
-        <ListinoTabelle listino={listino} promoActive={info.promoActive} discountPct={info.discountPct} headingLevel={2} />
+        <ListinoTabelle listino={listino} promoActive={info.promoActive} discountPct={info.discountPct} headingLevel={3} />
       </div>
       <Link
         href="/prenota"
