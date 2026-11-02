@@ -2,13 +2,14 @@
 
 ## Dove metterli
 
-Nella cartella `public/videos/` del progetto. Per ogni servizio servono tre file con lo stesso nome:
+Nella cartella `public/videos/` del progetto. Per ogni servizio servono due file con lo stesso nome:
 
 | File | A cosa serve |
 |---|---|
-| `NOME.webm` | Video per Chrome, Firefox, Android (VP9, più leggero) |
-| `NOME.mp4` | Video per iPhone e Safari (H.264) |
+| `NOME.mp4` | Video con audio (H.264 + AAC), funziona su tutti i browser, iPhone compreso |
 | `NOME.jpg` | Prima immagine, mostrata mentre il video carica |
+
+Il video parte con l'audio quando il cliente clicca il servizio (i browser non permettono l'audio senza un click).
 
 `NOME` è quello indicato in `src/data/catalogo.ts` (campo `video`):
 
@@ -24,22 +25,24 @@ Se un file manca, il sito mostra il riquadro "Video in arrivo": si possono aggiu
 
 - Formato verticale 4:5, per esempio 800 x 1000 pixel.
 - Durata 3-6 secondi, pensati per girare in loop senza stacco visibile.
-- Nessun audio (il sito li riproduce comunque muti).
+- Audio: musica con licenza per uso commerciale sul web (vedi sotto). Volume normalizzato.
 - Peso: sotto 1,5 MB ciascuno.
 
 Conversione con ffmpeg partendo da un file `originale.mov`:
 
 ```bash
-ffmpeg -i originale.mov -an -vf "scale=800:1000:force_original_aspect_ratio=increase,crop=800:1000" -c:v libvpx-vp9 -b:v 0 -crf 36 -row-mt 1 balayage.webm
-```
-
-```bash
-ffmpeg -i originale.mov -an -vf "scale=800:1000:force_original_aspect_ratio=increase,crop=800:1000" -c:v libx264 -crf 26 -preset slow -pix_fmt yuv420p -movflags +faststart balayage.mp4
+ffmpeg -i originale.mov -vf "scale=720:900:force_original_aspect_ratio=increase,crop=720:900,fps=30" -c:v libx264 -crf 27 -preset slow -pix_fmt yuv420p -c:a aac -b:a 128k -movflags +faststart balayage.mp4
 ```
 
 ```bash
 ffmpeg -i balayage.mp4 -frames:v 1 -q:v 3 balayage.jpg
 ```
+
+## Musica: attenzione
+
+La musica dei reel di Instagram (libreria audio di Meta) ha la licenza solo per Instagram e Facebook.
+Sul sito serve musica senza diritti o con licenza commerciale (per esempio Pixabay Music,
+YouTube Audio Library con licenza che lo consente, Epidemic Sound, Artlist), oppure nessuna musica.
 
 ## Video generati con l'IA: attenzione
 

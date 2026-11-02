@@ -19,11 +19,11 @@ export type VoceCatalogoUI = {
 
 type Stato = "loading" | "ready" | "missing";
 
-const HOVER_DELAY = 120;
-
 /**
- * Catalogo animato: passando il mouse (desktop) o toccando (mobile) un servizio
- * parte il suo micro-video in loop, muto, nell'area di visualizzazione.
+ * Catalogo animato: cliccando (o toccando) un servizio il suo video parte
+ * subito nell'area di visualizzazione, con l'audio. Un solo elemento <video>
+ * avviato dentro il click: è l'unico modo in cui i browser (Safari compreso)
+ * permettono la riproduzione con audio.
  */
 export default function CatalogoServizi({
   voci,
@@ -39,62 +39,110 @@ export default function CatalogoServizi({
   const [activeId, setActiveId] = useState(voci[0]?.id);
   const active = voci.find((v) => v.id === activeId) ?? visibili[0];
 
-  const [canHover, setCanHover] = useState(false);
+  const [isTouch, setIsTouch] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
-  const [ext, setExt] = useState<"webm" | "mp4">("mp4");
+  // MP4 (H.264 + AAC): l'unico formato con audio affidabile anche su Safari iPhone
+  const [ext, setExt] = useState<"mp4" | null>(null);
   const [stato, setStato] = useState<Stato>("loading");
-  const [playing, setPlaying] = useState(true);
+  const [playing, setPlaying] = useState(false);
+  const [soundOn, setSoundOn] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
-  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadedId = useRef<string | null>(null);
+  const soundRef = useRef(false);
+  /** L'utente vuole il video in riproduzione (non cambia con le pause automatiche). */
+  const wantPlay = useRef(false);
 
   useEffect(() => {
-    const hover = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const touch = window.matchMedia("(hover: none), (pointer: coarse)");
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const update = () => {
-      setCanHover(hover.matches);
+      setIsTouch(touch.matches);
       setReducedMotion(motion.matches);
     };
     update();
-    hover.addEventListener("change", update);
+    touch.addEventListener("change", update);
     motion.addEventListener("change", update);
-    const probe = document.createElement("video");
-    setExt(probe.canPlayType('video/webm; codecs="vp9"') ? "webm" : "mp4");
+    setExt("mp4");
     return () => {
-      hover.removeEventListener("change", update);
+      touch.removeEventListener("change", update);
       motion.removeEventListener("change", update);
     };
   }, []);
+
+  /** Carica il video del servizio e lo avvia; con l'audio se richiesto e consentito. */
+  const load = (item: VoceCatalogoUI, opts: { play: boolean; sound: boolean }) => {
+    const v = videoRef.current;
+    if (!v || !ext) return;
+    loadedId.current = item.id;
+    if (!item.video) {
+      v.pause();
+      v.removeAttribute("src");
+      v.load();
+      setPlaying(false);
+      setStato("missing");
+      return;
+    }
+    const src = `/videos/${item.video}.${ext}`;
+    if (!v.src.endsWith(src)) {
+      setStato("loading");
+      v.poster = `/videos/${item.video}.jpg`;
+      v.src = src;
+    }
+    v.muted = !opts.sound;
+    wantPlay.current = opts.play;
+    if (!opts.play) return;
+    v.play()
+      .then(() => {
+        soundRef.current = !v.muted;
+        setSoundOn(!v.muted);
+      })
+      .catch((err: DOMException) => {
+        // Solo se il browser vieta l'audio senza un click: riparte muto
+        if (err?.name === "NotAllowedError" && !v.muted) {
+          v.muted = true;
+          soundRef.current = false;
+          setSoundOn(false);
+          v.play().catch(() => {});
+        }
+      });
+  };
 
   // Con un filtro che esclude il servizio attivo, passa al primo visibile
   useEffect(() => {
     if (visibili.length && !visibili.some((v) => v.id === activeId)) setActiveId(visibili[0].id);
   }, [visibili, activeId]);
 
-  // Nuovo servizio: torna allo skeleton finché il video non è pronto
+  // Primo caricamento e cambi non dovuti a un click (filtri): video muto
   useEffect(() => {
-    setStato(active?.video ? "loading" : "missing");
-    setPlaying(!reducedMotion);
-  }, [active?.id, active?.video, reducedMotion]);
+    if (!active || !ext || loadedId.current === active.id) return;
+    load(active, { play: !reducedMotion, sound: soundRef.current });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active?.id, ext]);
 
-  // Mette in pausa il video quando l'area non è visibile (batteria e dati)
+  // Pausa quando l'area esce dallo schermo, ripresa quando rientra (batteria e dati)
   useEffect(() => {
     const el = viewerRef.current;
     if (!el || !("IntersectionObserver" in window)) return;
-    const io = new IntersectionObserver(([e]) => {
-      const v = videoRef.current;
-      if (!v) return;
-      if (!e.isIntersecting) v.pause();
-      else if (playing) v.play().catch(() => {});
-    });
+    const io = new IntersectionObserver(
+      ([e]) => {
+        const v = videoRef.current;
+        if (!v || !v.getAttribute("src")) return;
+        if (!e.isIntersecting) v.pause();
+        else if (wantPlay.current && v.paused) v.play().catch(() => {});
+      },
+      { threshold: 0.25 },
+    );
     io.observe(el);
     return () => io.disconnect();
-  }, [playing]);
+  }, []);
 
-  const select = (id: string, fromTap = false) => {
-    setActiveId(id);
-    if (fromTap && !canHover) {
+  /** Click su un servizio: cambia e fa partire subito il video con l'audio. */
+  const select = (item: VoceCatalogoUI) => {
+    setActiveId(item.id);
+    load(item, { play: true, sound: true });
+    if (isTouch) {
       const top = viewerRef.current?.getBoundingClientRect().top ?? 0;
       if (top < 64 || top > window.innerHeight * 0.5) {
         viewerRef.current?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
@@ -102,21 +150,27 @@ export default function CatalogoServizi({
     }
   };
 
-  const onEnter = (id: string) => {
-    if (!canHover) return;
-    if (hoverTimer.current) clearTimeout(hoverTimer.current);
-    hoverTimer.current = setTimeout(() => setActiveId(id), HOVER_DELAY);
-  };
-
   const togglePlay = () => {
     const v = videoRef.current;
     if (!v) return;
     if (v.paused) {
+      wantPlay.current = true;
       v.play().catch(() => {});
-      setPlaying(true);
     } else {
+      wantPlay.current = false;
       v.pause();
-      setPlaying(false);
+    }
+  };
+
+  const toggleSound = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = !v.muted;
+    soundRef.current = !v.muted;
+    setSoundOn(!v.muted);
+    if (v.paused) {
+      wantPlay.current = true;
+      v.play().catch(() => {});
     }
   };
 
@@ -130,7 +184,7 @@ export default function CatalogoServizi({
             Guarda i servizi
           </h2>
           <p className="mt-2 max-w-lg text-ink-2">
-            {canHover ? "Passa sopra un servizio" : "Tocca un servizio"} per vedere come viene il risultato.
+            {isTouch ? "Tocca" : "Clicca"} un servizio per guardare il video del lavoro.
           </p>
         </div>
         <div role="group" aria-label="Filtra per categoria" className="flex flex-wrap gap-2">
@@ -160,23 +214,21 @@ export default function CatalogoServizi({
                 aria-hidden
                 className={`absolute inset-0 bg-tint transition-opacity duration-300 ${stato === "loading" ? "animate-skeleton opacity-100" : "opacity-0"}`}
               />
-              {active.video && stato !== "missing" && (
-                <video
-                  key={`${active.id}.${ext}`}
-                  ref={videoRef}
-                  src={`/videos/${active.video}.${ext}`}
-                  poster={`/videos/${active.video}.jpg`}
-                  autoPlay={!reducedMotion}
-                  loop
-                  muted
-                  playsInline
-                  preload="auto"
-                  aria-label={`${active.name}: video illustrativo`}
-                  onLoadedData={() => setStato("ready")}
-                  onError={() => setStato("missing")}
-                  className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${stato === "ready" ? "opacity-100" : "opacity-0"}`}
-                />
-              )}
+              {/* Un solo video per tutto il catalogo: src e play gestiti in load() */}
+              <video
+                ref={videoRef}
+                loop
+                playsInline
+                preload="auto"
+                aria-label={`${active.name}: video del lavoro`}
+                onLoadedData={() => setStato("ready")}
+                onError={() => {
+                  if (videoRef.current?.getAttribute("src")) setStato("missing");
+                }}
+                onPause={() => setPlaying(false)}
+                onPlay={() => setPlaying(true)}
+                className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${stato === "ready" ? "opacity-100" : "pointer-events-none opacity-0"}`}
+              />
               {stato === "missing" && active.immagine && (
                 <Image
                   key={active.immagine.src}
@@ -194,13 +246,23 @@ export default function CatalogoServizi({
                 </div>
               )}
               {stato === "ready" && (
-                <button
-                  type="button"
-                  onClick={togglePlay}
-                  className="absolute right-3 bottom-3 min-h-11 border border-ink bg-bg px-3 text-sm font-semibold transition-colors hover:bg-ink hover:text-bg"
-                >
-                  {playing ? "Pausa" : "Riproduci"}
-                </button>
+                <div className="absolute right-3 bottom-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={toggleSound}
+                    aria-pressed={soundOn}
+                    className="min-h-11 border border-ink bg-bg px-3 text-sm font-semibold transition-colors hover:bg-ink hover:text-bg"
+                  >
+                    {soundOn ? "Audio sì" : "Audio no"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={togglePlay}
+                    className="min-h-11 border border-ink bg-bg px-3 text-sm font-semibold transition-colors hover:bg-ink hover:text-bg"
+                  >
+                    {playing ? "Pausa" : "Riproduci"}
+                  </button>
+                </div>
               )}
             </div>
             <figcaption className="mt-4" aria-live="polite">
@@ -241,9 +303,7 @@ export default function CatalogoServizi({
                   type="button"
                   aria-pressed={on}
                   aria-controls="catalogo-viewer"
-                  onMouseEnter={() => onEnter(v.id)}
-                  onFocus={() => select(v.id)}
-                  onClick={() => select(v.id, true)}
+                  onClick={() => select(v)}
                   className={`group flex min-h-14 w-full items-center gap-4 py-3 text-left transition-colors ${on ? "text-ink" : "text-ink-2 hover:text-ink"}`}
                 >
                   <span
