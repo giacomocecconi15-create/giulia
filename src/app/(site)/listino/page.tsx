@@ -26,6 +26,8 @@ export default async function Listino() {
       categorie: catalogo[s.id]?.categorie ?? categorieDaSezione(sezione.id),
       descrizione: catalogo[s.id]?.descrizione ?? sezione.name,
       video: catalogo[s.id]?.video,
+      immagine: catalogo[s.id]?.immagine,
+      videoIA: catalogo[s.id]?.videoIA,
     })),
   );
   return (

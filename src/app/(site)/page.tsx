@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import JsonLd from "@/components/JsonLd";
 import ListinoTabelle from "@/components/ListinoTabelle";
@@ -21,25 +22,29 @@ const valori = [
   },
 ];
 
+/** Foto dei lavori (public/images), con il consenso delle persone ritratte. */
 const lavori = [
-  "Taglio donna corto con piega morbida",
-  "Schiaritura airtouch su capelli lunghi",
-  "Taglio uomo sfumato con modellatura barba",
-  "Colore completo con tonalizzante",
-  "Bodylights e piega mossa",
+  {
+    src: "/images/lavoro-balayage.jpg",
+    titolo: "Balayage caramello",
+    alt: "Capelli lunghi castani visti da dietro con balayage caramello e onde morbide, nel salone Level Up",
+  },
+  {
+    src: "/images/lavoro-sposa-ricci.jpg",
+    titolo: "Raccolto sposa con ricci",
+    alt: "Sposa con raccolto alto di ricci definiti e ciuffi liberi, decorato con un tralcio di perle",
+  },
+  {
+    src: "/images/lavoro-sposa-onde.jpg",
+    titolo: "Sposa, onde morbide",
+    alt: "Giulia rifinisce le onde morbide di una sposa in vestaglia di raso, all'aperto tra gli ulivi",
+  },
+  {
+    src: "/images/lavoro-taglio-uomo.jpg",
+    titolo: "Taglio uomo sfumato",
+    alt: "Uomo di profilo con taglio corto sfumato ai lati e volume in alto, nel salone Level Up",
+  },
 ];
-
-function FotoSegnaposto({ label, className = "" }: { label: string; className?: string }) {
-  return (
-    <div
-      role="img"
-      aria-label={`${label} (foto in arrivo)`}
-      className={`flex items-end border border-line bg-tint p-4 ${className}`}
-    >
-      <span className="text-sm text-ink-3">{label}</span>
-    </div>
-  );
-}
 
 function BottonePrenota({ children = "Prenota ora" }: { children?: React.ReactNode }) {
   return (
@@ -82,7 +87,16 @@ export default async function Home() {
             </Link>
           </div>
         </div>
-        <FotoSegnaposto label="Giulia al lavoro in salone" className="reveal aspect-[4/5] w-full" />
+        <figure className="reveal relative aspect-[4/5] w-full overflow-hidden bg-tint">
+          <Image
+            src="/images/giulia.jpg"
+            alt="Giulia, titolare di Level Up, sorride nel suo salone di Pesaro con un mazzo di fiori in mano"
+            fill
+            priority
+            sizes="(min-width: 768px) 50vw, 100vw"
+            className="object-cover object-top"
+          />
+        </figure>
       </section>
 
       {/* Nastro servizi */}
@@ -130,12 +144,20 @@ export default async function Home() {
               </a>
             )}
           </div>
-          <ul className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-6">
-            {lavori.map((l, i) => (
-              <li key={l} className={`reveal ${i < 2 ? "col-span-2 md:col-span-3" : "col-span-1 md:col-span-2"} ${i === 4 ? "col-span-2" : ""}`}>
-                <figure>
-                  <FotoSegnaposto label={l} className={i < 2 ? "aspect-[4/3]" : "aspect-square"} />
-                  <figcaption className="sr-only">{l}</figcaption>
+          <ul className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+            {lavori.map((l) => (
+              <li key={l.src} className="reveal">
+                <figure className="group">
+                  <div className="relative aspect-[4/5] overflow-hidden bg-line">
+                    <Image
+                      src={l.src}
+                      alt={l.alt}
+                      fill
+                      sizes="(min-width: 768px) 25vw, 50vw"
+                      className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03] motion-reduce:transition-none"
+                    />
+                  </div>
+                  <figcaption className="mt-2 text-sm font-semibold">{l.titolo}</figcaption>
                 </figure>
               </li>
             ))}

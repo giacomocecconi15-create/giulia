@@ -18,12 +18,26 @@ export type VoceCatalogo = {
   descrizione: string;
   /** Nome base del file in public/videos/ (senza estensione) */
   video?: string;
+  /** true se il video è generato con l'IA: mostra la dichiarazione obbligatoria */
+  videoIA?: boolean;
+  /** Foto vera in public/images/, mostrata se il video manca */
+  immagine?: { src: string; alt: string };
 };
 
 export const catalogo: Record<string, VoceCatalogo> = {
   "taglio-donna": { categorie: ["donna"], descrizione: "Taglio su misura del viso e del tipo di capello, con consulenza prima di iniziare.", video: "taglio-donna" },
-  "taglio-uomo": { categorie: ["uomo"], descrizione: "Classico o sfumato, rifinito a forbice e macchinetta.", video: "taglio-uomo" },
-  piega: { categorie: ["donna"], descrizione: "Liscia, mossa o voluminosa, pensata per durare.", video: "piega" },
+  "taglio-uomo": {
+    categorie: ["uomo"],
+    descrizione: "Classico o sfumato, rifinito a forbice e macchinetta.",
+    video: "taglio-uomo",
+    immagine: { src: "/images/lavoro-taglio-uomo.jpg", alt: "Uomo di profilo con taglio corto sfumato ai lati" },
+  },
+  piega: {
+    categorie: ["donna"],
+    descrizione: "Liscia, mossa o voluminosa, pensata per durare.",
+    video: "piega",
+    immagine: { src: "/images/lavoro-sposa-onde.jpg", alt: "Piega a onde morbide su capelli lunghi castani" },
+  },
   asciugatura: { categorie: ["donna", "uomo"], descrizione: "Asciugatura veloce dopo il lavaggio, senza messa in piega.", video: "asciugatura" },
   "colore-ricrescita": { categorie: ["donna"], descrizione: "Colore solo sulla ricrescita, uniforme con le lunghezze.", video: "colore-ricrescita" },
   "colore-completo": { categorie: ["donna"], descrizione: "Colore pieno dalla radice alle punte.", video: "colore-completo" },
@@ -32,7 +46,12 @@ export const catalogo: Record<string, VoceCatalogo> = {
   airtouch: { categorie: ["donna"], descrizione: "Schiaritura sfumata e naturale, senza stacchi, che cresce bene.", video: "airtouch" },
   bodylights: { categorie: ["donna"], descrizione: "Luci diffuse su tutta la chioma per un effetto luminoso.", video: "bodylights" },
   meches: { categorie: ["donna"], descrizione: "Ciocche schiarite definite, dal classico al contrasto deciso.", video: "meches" },
-  balayage: { categorie: ["donna"], descrizione: "Schiaritura a mano libera sulle lunghezze, effetto sole.", video: "balayage" },
+  balayage: {
+    categorie: ["donna"],
+    descrizione: "Schiaritura a mano libera sulle lunghezze, effetto sole.",
+    video: "balayage",
+    immagine: { src: "/images/lavoro-balayage.jpg", alt: "Balayage caramello su capelli lunghi mossi, visti da dietro" },
+  },
   cheratina: { categorie: ["trattamenti", "donna"], descrizione: "Lisciante alla cheratina: capelli disciplinati e lucidi per settimane.", video: "cheratina" },
   "trattamento-lunghezze": { categorie: ["trattamenti"], descrizione: "Nutrimento e ristrutturazione per lunghezze secche o danneggiate.", video: "trattamento-lunghezze" },
   "trattamento-cute": { categorie: ["trattamenti"], descrizione: "Trattamento mirato per cute grassa, secca o sensibile.", video: "trattamento-cute" },

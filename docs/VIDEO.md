@@ -43,8 +43,8 @@ ffmpeg -i balayage.mp4 -frames:v 1 -q:v 3 balayage.jpg
 
 ## Video generati con l'IA: attenzione
 
-- Sotto il video il sito scrive già "Video generato con l'intelligenza artificiale, a scopo illustrativo".
-  Non toglierlo: un risultato simulato presentato come reale può essere pubblicità ingannevole
+- Per i video generati con l'IA metti `videoIA: true` in `src/data/catalogo.ts`: sotto il video
+  compare "Video generato con l'intelligenza artificiale, a scopo illustrativo". Non toglierlo: un risultato simulato presentato come reale può essere pubblicità ingannevole
   (Codice del Consumo) e l'AI Act europeo chiede di dichiarare i contenuti sintetici.
 - Il risultato mostrato deve essere realistico e ottenibile in salone.
 - Se poi userete foto o video di clienti vere, serve la loro liberatoria scritta.

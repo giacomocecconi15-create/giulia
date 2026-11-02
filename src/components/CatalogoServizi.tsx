@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { categorie, type Categoria } from "@/data/catalogo";
@@ -12,6 +13,8 @@ export type VoceCatalogoUI = {
   categorie: Categoria[];
   descrizione: string;
   video?: string;
+  immagine?: { src: string; alt: string };
+  videoIA?: boolean;
 };
 
 type Stato = "loading" | "ready" | "missing";
@@ -174,7 +177,17 @@ export default function CatalogoServizi({
                   className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${stato === "ready" ? "opacity-100" : "opacity-0"}`}
                 />
               )}
-              {stato === "missing" && (
+              {stato === "missing" && active.immagine && (
+                <Image
+                  key={active.immagine.src}
+                  src={active.immagine.src}
+                  alt={active.immagine.alt}
+                  fill
+                  sizes="(min-width: 768px) 50vw, 100vw"
+                  className="object-cover"
+                />
+              )}
+              {stato === "missing" && !active.immagine && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
                   <span className="font-display text-3xl">{active.name}</span>
                   <span className="mt-2 text-sm text-ink-3">Video in arrivo</span>
@@ -199,10 +212,15 @@ export default function CatalogoServizi({
               {promoActive && active.promoEligible && (
                 <p className="mt-1 text-sm font-semibold text-magenta-text">Prima visita -{discountPct}%</p>
               )}
-              <p className="mt-3 text-xs text-ink-3">
-                Video generato con l&apos;intelligenza artificiale, a scopo illustrativo. Il risultato reale dipende dal tipo di
-                capello.
-              </p>
+              {stato === "ready" && active.videoIA && (
+                <p className="mt-3 text-xs text-ink-3">
+                  Video generato con l&apos;intelligenza artificiale, a scopo illustrativo. Il risultato reale dipende dal tipo di
+                  capello.
+                </p>
+              )}
+              {((stato === "ready" && !active.videoIA) || (stato === "missing" && active.immagine)) && (
+                <p className="mt-3 text-xs text-ink-3">Lavoro reale, realizzato da Giulia.</p>
+              )}
               <Link
                 href={`/prenota?servizi=${active.id}`}
                 className="mt-4 inline-flex min-h-12 items-center border border-ink bg-ink px-6 font-semibold text-bg transition-colors hover:border-blue hover:bg-blue hover:text-ink"
