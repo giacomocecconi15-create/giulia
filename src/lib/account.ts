@@ -1,19 +1,20 @@
 import "server-only";
 import { prisma } from "./db";
 import { loadSettings } from "./booking/server";
+import { ITEMS_ORDER } from "@/lib/booking/order";
 
 export async function getAccountData(customerId: string, now = new Date()) {
   const [upcoming, past, card, settings, waitlist] = await Promise.all([
     prisma.booking.findMany({
       where: { customerId, status: "confirmed", start: { gt: now } },
       orderBy: { start: "asc" },
-      include: { items: { include: { service: { select: { name: true, active: true } } } } },
+      include: { items: { orderBy: ITEMS_ORDER, include: { service: { select: { name: true, active: true } } } } },
     }),
     prisma.booking.findMany({
       where: { customerId, OR: [{ start: { lte: now } }, { status: { not: "confirmed" } }] },
       orderBy: { start: "desc" },
       take: 20,
-      include: { items: { include: { service: { select: { name: true, active: true } } } } },
+      include: { items: { orderBy: ITEMS_ORDER, include: { service: { select: { name: true, active: true } } } } },
     }),
     prisma.punchCard.findUnique({ where: { customerId } }),
     loadSettings(),

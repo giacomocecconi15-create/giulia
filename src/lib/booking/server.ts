@@ -6,6 +6,7 @@ import { defaultOpeningHours, promo, type OpeningHours } from "../site";
 import { addDays, romeLocalToUtc, romeYmd } from "../time";
 import { bookingDurationMinutes, computeAvailability, isSlotAvailable, type Interval } from "./availability";
 import { computeQuote } from "./discount";
+import { ITEMS_ORDER } from "@/lib/booking/order";
 
 /** Stati che occupano l'agenda. */
 const OCCUPYING = ["confirmed", "completed", "no_show"] as const;
@@ -45,7 +46,10 @@ export class BookingError extends Error {
 async function servicesFor(ids: string[]) {
   const unique = [...new Set(ids)];
   if (unique.length === 0) throw new BookingError("no_services");
-  const services = await prisma.service.findMany({ where: { id: { in: unique }, active: true } });
+  const services = await prisma.service.findMany({
+    where: { id: { in: unique }, active: true },
+    orderBy: [{ section: { sortOrder: "asc" } }, { sortOrder: "asc" }],
+  });
   if (services.length !== unique.length) throw new BookingError("invalid_services");
   return services;
 }
@@ -207,7 +211,7 @@ export async function createBooking(input: {
           createdByAdmin: input.byAdmin ?? false,
           items: { create: services.map((s) => ({ serviceId: s.id, priceCents: s.priceCents })) },
         },
-        include: { customer: true, items: { include: { service: { select: { name: true } } } } },
+        include: { customer: true, items: { orderBy: ITEMS_ORDER, include: { service: { select: { name: true } } } } },
       });
     },
     { isolationLevel: "ReadCommitted", timeout: 10_000 },
@@ -233,7 +237,7 @@ export async function cancelBooking(bookingId: string, customerId: string, now =
   return prisma.booking.update({
     where: { id: b.id },
     data: { status: "cancelled", cancelledAt: now, lateCancellation: late },
-    include: { customer: true, items: { include: { service: true } } },
+    include: { customer: true, items: { orderBy: ITEMS_ORDER, include: { service: true } } },
   });
 }
 
@@ -269,7 +273,7 @@ export async function rescheduleBooking(bookingId: string, customerId: string, n
       return tx.booking.update({
         where: { id: b.id },
         data: { start: newStart, end: new Date(newStart.getTime() + durationMin * 60_000), reminderSentAt: null, customerConfirmedAt: null },
-        include: { customer: true, items: { include: { service: true } } },
+        include: { customer: true, items: { orderBy: ITEMS_ORDER, include: { service: true } } },
       });
     },
     { isolationLevel: "ReadCommitted", timeout: 10_000 },

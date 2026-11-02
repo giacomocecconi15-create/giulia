@@ -8,6 +8,7 @@ import { formatEuro } from "@/lib/format";
 import { formatPhone } from "@/lib/phone";
 import { stripeConfigured } from "@/lib/stripe";
 import { labelGiornoLungo, romeHm, romeYmd } from "@/lib/time";
+import { ITEMS_ORDER } from "@/lib/booking/order";
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -15,7 +16,7 @@ export default async function Prenotazione({ params }: { params: Promise<{ id: s
   const { id } = await params;
   const b = await prisma.booking.findUnique({
     where: { id },
-    include: { customer: { include: { punchCard: true, _count: { select: { bookings: true } } } }, items: { include: { service: true } } },
+    include: { customer: { include: { punchCard: true, _count: { select: { bookings: true } } } }, items: { orderBy: ITEMS_ORDER, include: { service: true } } },
   });
   if (!b) notFound();
   const now = new Date();

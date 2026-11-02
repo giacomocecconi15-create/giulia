@@ -130,10 +130,13 @@ const ServicePreview = forwardRef<ServicePreviewHandle, { item: VoceCatalogoUI |
         </div>
       ) : null;
 
-    // Sotto lg: anteprima compatta (video a sinistra, testo e comandi a destra) per lasciare in vista i giorni
     return (
-      <figure className={`grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-start gap-4 lg:block ${className}`}>
-        <div ref={boxRef} className="relative aspect-[4/5] w-full overflow-hidden border border-line bg-tint">
+      <figure className={className}>
+        {/* Su mobile l'anteprima è grande ma non supera ~60% dell'altezza dello schermo */}
+        <div
+          ref={boxRef}
+          className="relative mx-auto aspect-[4/5] w-full max-w-[min(100%,calc(60vh*0.8))] overflow-hidden border border-line bg-tint lg:max-w-none"
+        >
           <div
             aria-hidden
             className={`absolute inset-0 bg-tint transition-opacity duration-300 ${stato === "loading" ? "animate-skeleton opacity-100" : "opacity-0"}`}
@@ -159,7 +162,7 @@ const ServicePreview = forwardRef<ServicePreviewHandle, { item: VoceCatalogoUI |
             <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
               {item ? (
                 <>
-                  <span className="hidden font-display text-3xl lg:block">{item.name}</span>
+                  <span className="font-display text-3xl">{item.name}</span>
                   <span className="mt-2 text-sm text-ink-3">Video in arrivo</span>
                 </>
               ) : (
@@ -167,12 +170,12 @@ const ServicePreview = forwardRef<ServicePreviewHandle, { item: VoceCatalogoUI |
               )}
             </div>
           )}
-          {controls("absolute right-3 bottom-3 hidden lg:flex")}
+          {controls("absolute right-3 bottom-3 flex")}
         </div>
         {item && (
-          <figcaption className="lg:mt-3" aria-live="polite">
+          <figcaption className="mx-auto mt-3 max-w-[min(100%,calc(60vh*0.8))] lg:max-w-none" aria-live="polite">
             <p className="font-display text-xl leading-tight sm:text-2xl lg:hidden">{item.name}</p>
-            <p className="mt-1 line-clamp-3 text-sm text-ink-2 lg:mt-0 lg:line-clamp-none lg:text-base">{item.descrizione}</p>
+            <p className="mt-1 text-ink-2 lg:mt-0">{item.descrizione}</p>
             {stato === "ready" && item.videoIA && (
               <p className="mt-1 text-xs text-ink-3">
                 Video generato con l&apos;intelligenza artificiale, a scopo illustrativo. Il risultato reale dipende dal tipo di capello.
@@ -181,7 +184,6 @@ const ServicePreview = forwardRef<ServicePreviewHandle, { item: VoceCatalogoUI |
             {((stato === "ready" && !item.videoIA) || (stato === "missing" && item.immagine)) && (
               <p className="mt-1 text-xs text-ink-3">Lavoro reale, realizzato da Giulia.</p>
             )}
-            {controls("mt-3 flex flex-wrap lg:hidden")}
           </figcaption>
         )}
       </figure>

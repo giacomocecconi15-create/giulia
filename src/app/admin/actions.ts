@@ -10,6 +10,7 @@ import { prisma } from "@/lib/db";
 import { normalizeItalianMobile } from "@/lib/phone";
 import { chargeSavedCard, stripeConfigured } from "@/lib/stripe";
 import { addDays, romeLocalToUtc } from "@/lib/time";
+import { ITEMS_ORDER } from "@/lib/booking/order";
 
 
 /** Blocca uno slot (pausa, appuntamento al telefono senza dettagli, ...). */
@@ -70,7 +71,7 @@ export async function adminCancel(formData: FormData) {
   const b = await prisma.booking.update({
     where: { id },
     data: { status: "cancelled", cancelledAt: new Date() },
-    include: { customer: true, items: { include: { service: true } } },
+    include: { customer: true, items: { orderBy: ITEMS_ORDER, include: { service: true } } },
   });
   await onBookingCancelled(b, notify);
   revalidatePath("/admin");

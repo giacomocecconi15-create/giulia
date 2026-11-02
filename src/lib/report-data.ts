@@ -1,11 +1,12 @@
 import "server-only";
 import { prisma } from "./db";
 import type { ReportBooking } from "./report";
+import { ITEMS_ORDER } from "@/lib/booking/order";
 
 /** Tutte le prenotazioni in forma compatta per il report. */
 export async function loadReportBookings(): Promise<ReportBooking[]> {
   const rows = await prisma.booking.findMany({
-    include: { customer: { select: { name: true } }, items: { include: { service: { select: { name: true } } } } },
+    include: { customer: { select: { name: true } }, items: { orderBy: ITEMS_ORDER, include: { service: { select: { name: true } } } } },
     orderBy: { start: "asc" },
   });
   return rows.map((b) => ({

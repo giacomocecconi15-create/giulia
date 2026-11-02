@@ -28,9 +28,11 @@ test("cliente da Instagram prenota, Giulia segna la visita e la ritrova nel repo
   await page.locator("#listino th a", { hasText: "Taglio donna" }).click();
   await page.waitForURL(/\/prenota\?servizi=taglio-donna/);
 
-  // 2. Servizio già scelto e giorni subito visibili; aggiunge la piega con "+"
-  await expect(page.getByRole("radiogroup", { name: "Giorno" })).toBeVisible();
+  // 2. Servizio già scelto; aggiunge la piega con "+". Su mobile poi "Scegli giorno e ora"
   await page.getByRole("button", { name: "Aggiungi Piega alla prenotazione" }).click();
+  const next = page.getByRole("button", { name: "Scegli giorno e ora" });
+  if (await next.isVisible()) await next.click();
+  await expect(page.getByRole("radiogroup", { name: "Giorno" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Togli Piega", exact: true })).toBeVisible();
 
   // 3. Giorno e ora: un giorno della settimana dopo

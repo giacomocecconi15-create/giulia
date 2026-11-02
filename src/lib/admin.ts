@@ -5,6 +5,7 @@ import { getCurrentCustomer } from "./session";
 import { loadSettings } from "./booking/server";
 import { addDays, isoWeekday, romeHm, romeLocalToUtc } from "./time";
 import type { OpeningHours } from "./site";
+import { ITEMS_ORDER } from "@/lib/booking/order";
 
 export async function requireAdmin() {
   const c = await getCurrentCustomer();
@@ -38,13 +39,13 @@ export async function getDayAgenda(date: string) {
   const [bookings, blocks, cancelled] = await Promise.all([
     prisma.booking.findMany({
       where: { start: { gte: dayStart, lt: dayEnd }, status: { in: ["confirmed", "completed", "no_show"] } },
-      include: { customer: true, items: { include: { service: true } } },
+      include: { customer: true, items: { orderBy: ITEMS_ORDER, include: { service: true } } },
       orderBy: { start: "asc" },
     }),
     prisma.block.findMany({ where: { start: { lt: dayEnd }, end: { gt: dayStart } }, orderBy: { start: "asc" } }),
     prisma.booking.findMany({
       where: { start: { gte: dayStart, lt: dayEnd }, status: "cancelled" },
-      include: { customer: true, items: { include: { service: true } } },
+      include: { customer: true, items: { orderBy: ITEMS_ORDER, include: { service: true } } },
       orderBy: { start: "asc" },
     }),
   ]);
@@ -99,7 +100,7 @@ export async function getWeekSummary(monday: string) {
   const end = romeLocalToUtc(addDays(monday, 7), "00:00");
   const bookings = await prisma.booking.findMany({
     where: { start: { gte: start, lt: end }, status: { in: ["confirmed", "completed", "no_show"] } },
-    include: { customer: true, items: { include: { service: true } } },
+    include: { customer: true, items: { orderBy: ITEMS_ORDER, include: { service: true } } },
     orderBy: { start: "asc" },
   });
   return Array.from({ length: 7 }, (_, i) => {

@@ -55,6 +55,8 @@ export default function BookingFlow({
   const [previewId, setPreviewId] = useState<string | null>(() => preselected.find((id) => voci.some((v) => v.id === id)) ?? null);
   const previewItem = voci.find((v) => v.id === previewId) ?? null;
   const previewRef = useRef<ServicePreviewHandle>(null);
+  /** Sotto lg la scelta è divisa in due: servizi (con anteprime), poi giorno e ora. */
+  const [mobileDays, setMobileDays] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const [pendingWaitlist, setPendingWaitlist] = useState<string | null>(null);
   const [waitlistDone, setWaitlistDone] = useState<string[]>([]);
@@ -94,7 +96,7 @@ export default function BookingFlow({
   useEffect(() => {
     if (!previewItem) return;
     previewRef.current?.show(previewItem, { play: true, sound: false });
-    if (window.innerWidth < 1024) requestAnimationFrame(() => scrollToPanel("auto"));
+    if (window.innerWidth < 1024) requestAnimationFrame(() => scrollToPanel("instant"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -168,10 +170,11 @@ export default function BookingFlow({
     window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - header - 12, behavior });
   };
 
+  /** Dopo l'aggiornamento della pagina (il pannello può essere appena comparso). */
   const revealPanel = () => {
     if (window.innerWidth >= 1024) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    scrollToPanel(reduce ? "auto" : "smooth");
+    requestAnimationFrame(() => requestAnimationFrame(() => scrollToPanel(reduce ? "instant" : "smooth")));
   };
 
   const shiftWeek = (dir: 1 | -1) => {
@@ -248,6 +251,28 @@ export default function BookingFlow({
         { id: "conferma", label: "Conferma" },
       ];
   const currentIdx = steps.findIndex((s) => s.id === step);
+  const stepsMobile = [
+    { label: "Servizi", on: step === "scelta" && !mobileDays },
+    { label: "Giorno e ora", on: step === "scelta" && mobileDays },
+    ...(initialCustomer ? [] : [{ label: "Accesso", on: step === "accesso" }]),
+    { label: "Conferma", on: step === "conferma" },
+  ];
+  const currentIdxMobile = stepsMobile.findIndex((s) => s.on);
+
+  /** Mobile: dai servizi al passaggio giorno e ora. */
+  const toTop = () =>
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: "instant" });
+      headingRef.current?.focus({ preventScroll: true });
+    });
+  const goDays = () => {
+    setMobileDays(true);
+    toTop();
+  };
+  const backToServices = () => {
+    setMobileDays(false);
+    toTop();
+  };
   const day = days?.[dayIdx];
   const canGoBack = from && today && from > today;
   const canGoForward = from && lastDay && days && days.length === DAYS_PER_PAGE && days.at(-1)!.date < lastDay;
@@ -255,8 +280,8 @@ export default function BookingFlow({
   const dayPicker = (
     <>
           <div className="mt-4 flex items-center justify-between gap-2">
-            {step === "scelta" ? <h2 className="font-display text-2xl">Quando vieni?</h2> : <span />}
-            <div className="flex">
+            {step === "scelta" ? <h2 className="hidden font-display text-2xl lg:block">Quando vieni?</h2> : <span />}
+            <div className="ml-auto flex">
               <button
                 type="button"
                 onClick={() => shiftWeek(-1)}
@@ -398,18 +423,23 @@ export default function BookingFlow({
     <div className={`mx-auto px-4 pt-5 pb-10 md:px-8 md:pt-14 md:pb-16 ${step === "scelta" ? "max-w-6xl" : "max-w-3xl"}`}>
       {step !== "fatto" && (
         <nav aria-label="Passaggi della prenotazione">
-          <ol className="flex gap-1 text-sm">
-            {steps.map((s, i) => (
-              <li
-                key={s.id}
-                aria-current={i === currentIdx ? "step" : undefined}
-                className={`flex-1 border-t-4 pt-2 ${i <= currentIdx ? "border-ink text-ink" : "border-line text-ink-3"} ${i === currentIdx ? "font-bold" : ""}`}
-              >
-                <span className="sr-only">Passaggio {i + 1}: </span>
-                {s.label}
-              </li>
-            ))}
-          </ol>
+          {[
+            { list: steps, current: currentIdx, cls: reschedule ? "flex" : "hidden lg:flex" },
+            { list: stepsMobile, current: currentIdxMobile, cls: reschedule ? "hidden" : "flex lg:hidden" },
+          ].map(({ list, current, cls }, k) => (
+            <ol key={k} className={`gap-1 text-sm ${cls}`}>
+              {list.map((s, i) => (
+                <li
+                  key={s.label}
+                  aria-current={i === current ? "step" : undefined}
+                  className={`flex-1 border-t-4 pt-2 ${i <= current ? "border-ink text-ink" : "border-line text-ink-3"} ${i === current ? "font-bold" : ""}`}
+                >
+                  <span className="sr-only">Passaggio {i + 1}: </span>
+                  {s.label}
+                </li>
+              ))}
+            </ol>
+          ))}
         </nav>
       )}
 
@@ -417,47 +447,62 @@ export default function BookingFlow({
       {step === "scelta" && (
         <section aria-labelledby="titolo-step" className="mt-6 md:mt-10">
           <h1 id="titolo-step" ref={headingRef} tabIndex={-1} className="font-display text-[2rem] leading-tight outline-none focus-visible:outline-none md:text-5xl">
-            Prenota
+            <span className="lg:hidden">{mobileDays ? "Quando vieni?" : "Prenota"}</span>
+            <span className="hidden lg:inline">Prenota</span>
           </h1>
-          <p className="mt-2 max-w-xl text-ink-2">Scegli un servizio: guardi il lavoro di Giulia e scegli subito giorno e ora.</p>
+          <p className={`mt-2 max-w-xl text-ink-2 ${mobileDays ? "hidden lg:block" : ""}`}>
+            Scegli un servizio: guardi il lavoro di Giulia e scegli subito giorno e ora.
+          </p>
           {notice && (
             <p role="alert" className="mt-4 border-l-4 border-magenta bg-tint px-4 py-3">
               {notice}
             </p>
           )}
 
-          <div className="mt-6 grid gap-8 md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] md:items-start lg:grid-cols-[minmax(0,4fr)_minmax(0,3fr)_minmax(0,4fr)]">
+          <div
+            className={`mt-6 grid gap-8 md:items-start lg:grid-cols-[minmax(0,4fr)_minmax(0,3fr)_minmax(0,4fr)] ${mobileDays ? "" : "md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]"}`}
+          >
             {/* Pannello: anteprima + servizi scelti, giorni e orari.
                 Mobile: sopra l'elenco. Tablet: colonna destra. Desktop: due colonne (lg:contents). */}
             <div className={`md:order-2 lg:contents ${selected.length === 0 && !previewItem ? "hidden md:block" : ""}`}>
-              <div ref={panelRef} className="scroll-mt-20 lg:sticky lg:top-24 lg:order-2 lg:self-start">
+              <div ref={panelRef} className={`scroll-mt-20 lg:sticky lg:top-24 lg:order-2 lg:block lg:self-start ${mobileDays ? "hidden" : ""}`}>
                 <ServicePreview ref={previewRef} item={previewItem} />
               </div>
 
-              <div className="mt-3 lg:sticky lg:top-24 lg:order-3 lg:mt-0 lg:self-start">
+              <div className={`mt-3 lg:sticky lg:top-24 lg:order-3 lg:mt-0 lg:block lg:self-start ${mobileDays ? "" : "hidden"}`}>
                 {selected.length > 0 ? (
-                  <>
-                    <h2 className="sr-only">Servizi scelti</h2>
-                    <ul className={`flex-wrap gap-2 ${selected.length === 1 && selected[0] === previewId ? "hidden lg:flex" : "flex"}`}>
-                      {selectedServices.map((s) => (
-                        <li key={s.id} className="flex items-center border border-ink">
-                          <span className="py-1.5 pl-3 font-semibold">
-                            {s.name} <span className="font-normal text-ink-2 tabular-nums">{formatPrezzo(s)}</span>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => remove(s.id)}
-                            aria-label={`Togli ${s.name}`}
-                            className="flex min-h-11 min-w-11 items-center justify-center text-xl leading-none hover:bg-ink hover:text-bg"
-                          >
-                            ×
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                    <p className="mt-2 hidden text-sm text-ink-3 lg:block">Vuoi aggiungere altro? Usa il pulsante + accanto al servizio.</p>
-                    {dayPicker}
-                  </>
+                  // Mobile: prima giorni e orari, poi i servizi scelti; desktop: servizi scelti sopra
+                  <div className="flex flex-col lg:block">
+                    <div className="order-2 mt-6 lg:mt-0">
+                      <h2 className="mb-2 text-sm font-semibold text-ink-3 lg:sr-only">Servizi scelti</h2>
+                      <ul className="flex flex-wrap gap-2">
+                        {selectedServices.map((s) => (
+                          <li key={s.id} className="flex items-center border border-ink">
+                            <span className="py-1.5 pl-3 font-semibold">
+                              {s.name} <span className="font-normal text-ink-2 tabular-nums">{formatPrezzo(s)}</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => remove(s.id)}
+                              aria-label={`Togli ${s.name}`}
+                              className="flex min-h-11 min-w-11 items-center justify-center text-xl leading-none hover:bg-ink hover:text-bg"
+                            >
+                              ×
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="mt-2 hidden text-sm text-ink-3 lg:block">Vuoi aggiungere altro? Usa il pulsante + accanto al servizio.</p>
+                      <button
+                        type="button"
+                        onClick={backToServices}
+                        className="mt-2 min-h-11 text-sm font-semibold underline underline-offset-4 lg:hidden"
+                      >
+                        Cambia o aggiungi servizi
+                      </button>
+                    </div>
+                    <div className="order-1 -mt-4 lg:mt-0">{dayPicker}</div>
+                  </div>
                 ) : (
                   <p className="hidden border border-dashed border-line p-6 text-ink-3 lg:block">
                     Qui compaiono i giorni e gli orari liberi per il servizio che scegli.
@@ -467,15 +512,15 @@ export default function BookingFlow({
             </div>
 
             {/* Elenco servizi con filtri */}
-            <div className="md:order-1 lg:order-1">
-              <div role="group" aria-label="Filtra per categoria" className="flex flex-wrap gap-2">
+            <div className={`md:order-1 lg:order-1 lg:block ${mobileDays ? "hidden" : ""}`}>
+              <div role="group" aria-label="Filtra per categoria" className="flex flex-wrap gap-1.5 sm:gap-2">
                 {categorie.map((c) => (
                   <button
                     key={c.id}
                     type="button"
                     aria-pressed={filtro === c.id}
                     onClick={() => setFiltro(c.id)}
-                    className={`min-h-11 border px-4 font-semibold transition-colors ${
+                    className={`min-h-11 border px-3 font-semibold transition-colors sm:px-4 ${
                       filtro === c.id ? "border-ink bg-ink text-bg" : "border-line hover:border-ink"
                     }`}
                   >
@@ -713,10 +758,15 @@ export default function BookingFlow({
                   ) : (
                     <>
                       <strong>{selectedServices.map((s) => s.name).join(", ")}</strong>, {formatEuro(subtotal)}
-                      <span className="block text-ink-3">Scegli giorno e ora</span>
+                      <span className={`text-ink-3 lg:block ${mobileDays ? "block" : "hidden"}`}>Scegli giorno e ora</span>
                     </>
                   )}
                 </p>
+              )}
+              {step === "scelta" && mobileDays && (
+                <button type="button" onClick={backToServices} className="min-h-11 font-semibold underline underline-offset-4 lg:hidden">
+                  Indietro
+                </button>
               )}
               {step === "orario" && (
                 <p>{slot ? <strong>{`${cap(slot.longLabel)}, ${slot.time}`}</strong> : <span className="text-ink-3">Scegli un orario</span>}</p>
@@ -731,10 +781,19 @@ export default function BookingFlow({
                 </button>
               )}
             </div>
+            {step === "scelta" && !mobileDays && (
+              <span className="lg:hidden">
+                <PrimaryButton disabled={selected.length === 0} onClick={goDays}>
+                  Scegli giorno e ora
+                </PrimaryButton>
+              </span>
+            )}
             {step === "scelta" && (
-              <PrimaryButton disabled={!slot} onClick={() => setStep(customer ? "conferma" : "accesso")}>
-                Prenota
-              </PrimaryButton>
+              <span className={mobileDays ? "" : "hidden lg:inline"}>
+                <PrimaryButton disabled={!slot} onClick={() => setStep(customer ? "conferma" : "accesso")}>
+                  Prenota
+                </PrimaryButton>
+              </span>
             )}
             {step === "orario" && reschedule && (
               <PrimaryButton disabled={!slot || submitting} onClick={confirm}>
@@ -764,7 +823,7 @@ function PrimaryButton({ children, disabled, onClick }: { children: React.ReactN
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="min-h-12 shrink-0 border border-ink bg-ink px-6 font-semibold text-bg transition-colors hover:border-blue hover:bg-blue hover:text-ink disabled:cursor-not-allowed disabled:border-line disabled:bg-line disabled:text-ink-3"
+      className="min-h-12 shrink-0 border border-ink bg-ink px-4 font-semibold whitespace-nowrap text-bg sm:px-6 transition-colors hover:border-blue hover:bg-blue hover:text-ink disabled:cursor-not-allowed disabled:border-line disabled:bg-line disabled:text-ink-3"
     >
       {children}
     </button>
