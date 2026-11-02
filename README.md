@@ -8,7 +8,7 @@ Specifiche in `docs/HANDOFF.md`, piano di lavoro in `docs/PRIMO_PROMPT.md`, line
 Serve un database Postgres (in locale, oppure gratuito su Supabase o Neon).
 
 ```bash
-cp .env.example .env      # poi inserisci DATABASE_URL e DIRECT_URL
+cp .env.example .env      # poi inserisci DATABASE_URL e DATABASE_URL_UNPOOLED (o usa neon env pull)
 npm install
 npm run db:migrate        # crea le tabelle
 npm run db:seed           # carica listino e impostazioni da src/data/servizi.json
@@ -23,10 +23,10 @@ Finché WhatsApp non è collegato, il codice di accesso viene stampato nella con
 
 ## Pubblicare su Vercel (anche solo per provare)
 
-1. Crea un database gratuito su [Neon](https://neon.tech) (regione Europa). Copia la stringa
-   "pooled" in `DATABASE_URL` e quella diretta in `DIRECT_URL`.
+1. Database su [Neon](https://neon.tech): il progetto è collegato in `.neon` e `neon.ts`.
+   `neon login` e poi `neon env pull` scrivono `DATABASE_URL` (pooled) e `DATABASE_URL_UNPOOLED` (diretta, usata da Prisma per le migrazioni).
 2. Su [Vercel](https://vercel.com) importa il repository GitHub.
-3. In Settings, Environment Variables inserisci almeno `DATABASE_URL`, `DIRECT_URL`,
+3. In Settings, Environment Variables inserisci almeno `DATABASE_URL`, `DATABASE_URL_UNPOOLED`,
    `SESSION_SECRET` (stringa casuale di 64 caratteri) e, per le prove, `OTP_DEV_SHOW=1`.
 4. Deploy. Lo script `vercel-build` crea le tabelle e carica il listino al primo avvio.
 

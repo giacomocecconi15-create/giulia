@@ -45,3 +45,4 @@ anteprima-level-up.zip
 # Playwright
 /test-results/
 /playwright-report/
+.neon
