@@ -1,8 +1,8 @@
-# Video del catalogo servizi (pagina /listino)
+# Video del catalogo servizi (pagina /prenota)
 
 ## Dove metterli
 
-Nella cartella `public/videos/` del progetto. Per ogni servizio servono due file con lo stesso nome:
+Nella cartella `public/videos/` del progetto. I video compaiono nella pagina Prenota, accanto al servizio. Per ogni servizio servono due file con lo stesso nome:
 
 | File | A cosa serve |
 |---|---|

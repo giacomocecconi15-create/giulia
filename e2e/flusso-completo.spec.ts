@@ -21,22 +21,22 @@ async function loginWithDevCode(page: Page, phone: string, name?: string) {
 }
 
 test("cliente da Instagram prenota, Giulia segna la visita e la ritrova nel report", async ({ page, browser }) => {
-  // 1. Arriva dalla bio Instagram
+  // 1. Arriva dalla bio Instagram e tocca "Taglio donna" nel listino della home
   await page.goto("/?utm_source=ig&utm_medium=bio&utm_campaign=lancio");
   await acceptCookies(page);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("livello");
-  await page.getByRole("link", { name: "Prenota", exact: true }).first().click();
-  await page.waitForURL(/\/prenota/);
+  await page.locator("#listino th a", { hasText: "Taglio donna" }).click();
+  await page.waitForURL(/\/prenota\?servizi=taglio-donna/);
 
-  // 2. Servizi
-  await page.getByRole("checkbox", { name: /Taglio donna/ }).check();
-  await page.getByRole("checkbox", { name: /^Piega/ }).check();
-  await page.getByRole("button", { name: "Scegli l'orario" }).click();
+  // 2. Servizio già scelto e giorni subito visibili; aggiunge la piega con "+"
+  await expect(page.getByRole("radiogroup", { name: "Giorno" })).toBeVisible();
+  await page.getByRole("button", { name: "Aggiungi Piega alla prenotazione" }).click();
+  await expect(page.getByRole("button", { name: "Togli Piega", exact: true })).toBeVisible();
 
-  // 3. Giorno e ora: prende un giorno della settimana dopo
+  // 3. Giorno e ora: un giorno della settimana dopo
   await page.getByRole("button", { name: "Settimana dopo" }).click();
   await page.locator("[role=radio]:not([disabled])").first().click();
-  const slot = page.locator("button[aria-pressed]").first();
+  const slot = page.locator("fieldset button[aria-pressed]").first();
   const time = await slot.innerText();
   await slot.click();
   await page.getByRole("button", { name: "Prenota", exact: true }).last().click();

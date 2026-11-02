@@ -47,7 +47,7 @@ export function offerCatalogSchema(listino: SezioneListino[]) {
     "@context": "https://schema.org",
     "@type": "OfferCatalog",
     name: "Listino Level Up",
-    url: `${site.url}/listino`,
+    url: `${site.url}/prenota`,
     provider: { "@id": `${site.url}/#business` },
     itemListElement: listino.map((sezione) => ({
       "@type": "OfferCatalog",

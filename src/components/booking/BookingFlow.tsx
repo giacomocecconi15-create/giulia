@@ -4,11 +4,14 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SezioneListino } from "@/lib/data";
 import { formatEuro, formatPrezzo } from "@/lib/format";
+import { categorie, type Categoria } from "@/data/catalogo";
 import CardGuarantee, { type CardGuaranteeHandle } from "./CardGuarantee";
 import LoginForm, { type LoggedCustomer } from "./LoginForm";
+import ServicePreview, { type ServicePreviewHandle, type VoceCatalogoUI } from "./ServicePreview";
 import { readUtm } from "../UtmCapture";
 
-type Step = "servizi" | "orario" | "accesso" | "conferma" | "fatto";
+/** "scelta" = servizio con anteprima + giorno e ora; "orario" solo per spostare. */
+type Step = "scelta" | "orario" | "accesso" | "conferma" | "fatto";
 type Slot = { start: string; time: string };
 type Day = { date: string; label: string; longLabel: string; open: boolean; slots: Slot[] };
 type Quote = {
@@ -26,6 +29,7 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export default function BookingFlow({
   listino,
+  voci,
   promoActive,
   discountPct,
   initialCustomer,
@@ -33,6 +37,7 @@ export default function BookingFlow({
   reschedule,
 }: {
   listino: SezioneListino[];
+  voci: VoceCatalogoUI[];
   promoActive: boolean;
   discountPct: number;
   initialCustomer: LoggedCustomer | null;
@@ -40,18 +45,17 @@ export default function BookingFlow({
   reschedule?: Reschedule | null;
 }) {
   const allServices = useMemo(() => listino.flatMap((s) => s.services), [listino]);
-  const [step, setStep] = useState<Step>(reschedule ? "orario" : "servizi");
+  const [step, setStep] = useState<Step>(reschedule ? "orario" : "scelta");
   const [selected, setSelected] = useState<string[]>(() =>
     reschedule ? reschedule.serviceIds : preselected.filter((id) => allServices.some((s) => s.id === id)),
   );
-  // Accordion servizi: "Taglio" aperto di default, più le sezioni con servizi già scelti
-  const [openSections, setOpenSections] = useState<string[]>(() => {
-    const withSelected = listino.filter((sec) => sec.services.some((x) => preselected.includes(x.id))).map((sec) => sec.id);
-    const first = listino.find((sec) => sec.id === "taglio")?.id ?? listino[0]?.id;
-    return [...new Set([first, ...withSelected].filter(Boolean) as string[])];
-  });
-  const toggleSection = (id: string) =>
-    setOpenSections((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+  // Catalogo: filtro, servizio in anteprima
+  const [filtro, setFiltro] = useState<Categoria | "tutti">("tutti");
+  const visibili = useMemo(() => (filtro === "tutti" ? voci : voci.filter((v) => v.categorie.includes(filtro))), [voci, filtro]);
+  const [previewId, setPreviewId] = useState<string | null>(() => preselected.find((id) => voci.some((v) => v.id === id)) ?? null);
+  const previewItem = voci.find((v) => v.id === previewId) ?? null;
+  const previewRef = useRef<ServicePreviewHandle>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const [pendingWaitlist, setPendingWaitlist] = useState<string | null>(null);
   const [waitlistDone, setWaitlistDone] = useState<string[]>([]);
   const [customer, setCustomer] = useState<LoggedCustomer | null>(initialCustomer);
@@ -75,10 +79,24 @@ export default function BookingFlow({
   const servicesParam = selected.join(",");
 
   // Sposta il focus sul titolo a ogni passaggio (lettori di schermo e tastiera)
+  const firstStep = useRef(true);
   useEffect(() => {
+    if (firstStep.current) {
+      firstStep.current = false;
+      return;
+    }
     headingRef.current?.focus();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [step]);
+
+  // Arrivo con un servizio già scelto (dalla home): anteprima pronta, muta finché non si clicca;
+  // sotto lg la pagina va direttamente all'anteprima e ai giorni
+  useEffect(() => {
+    if (!previewItem) return;
+    previewRef.current?.show(previewItem, { play: true, sound: false });
+    if (window.innerWidth < 1024) requestAnimationFrame(() => scrollToPanel("auto"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadDays = useCallback(
     async (start: string | null) => {
@@ -103,7 +121,7 @@ export default function BookingFlow({
   );
 
   useEffect(() => {
-    if (step === "orario") loadDays(from);
+    if ((step === "orario" || step === "scelta") && selected.length > 0) loadDays(from);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, servicesParam]);
 
@@ -116,9 +134,44 @@ export default function BookingFlow({
       .catch(() => setError("Errore nel calcolo del riepilogo."));
   }, [step, servicesParam, customer]);
 
-  const toggle = (id: string) => {
+  /** Click su un servizio: lo sceglie, avvia il video con l'audio e mostra subito i giorni. */
+  const choose = (item: VoceCatalogoUI) => {
     setSlot(null);
-    setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+    setSelected([item.id]);
+    setPreviewId(item.id);
+    previewRef.current?.show(item, { play: true, sound: true });
+    revealPanel();
+  };
+
+  /** "+": aggiunge (o toglie) un servizio alla stessa prenotazione. */
+  const toggleAdd = (item: VoceCatalogoUI) => {
+    setSlot(null);
+    const adding = !selected.includes(item.id);
+    setSelected((cur) => (adding ? [...cur, item.id] : cur.filter((x) => x !== item.id)));
+    if (adding) {
+      setPreviewId(item.id);
+      previewRef.current?.show(item, { play: true, sound: true });
+      revealPanel();
+    }
+  };
+
+  const remove = (id: string) => {
+    setSlot(null);
+    setSelected((cur) => cur.filter((x) => x !== id));
+  };
+
+  /** Porta l'anteprima subito sotto l'intestazione fissa (sotto lg sta sopra l'elenco). */
+  const scrollToPanel = (behavior: ScrollBehavior) => {
+    const el = panelRef.current;
+    if (!el) return;
+    const header = document.querySelector("header")?.getBoundingClientRect().height ?? 64;
+    window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - header - 12, behavior });
+  };
+
+  const revealPanel = () => {
+    if (window.innerWidth >= 1024) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    scrollToPanel(reduce ? "auto" : "smooth");
   };
 
   const shiftWeek = (dir: 1 | -1) => {
@@ -170,7 +223,8 @@ export default function BookingFlow({
     if (res.status === 409) {
       setSlot(null);
       setNotice(data.message);
-      setStep("orario");
+      setStep(reschedule ? "orario" : "scelta");
+      loadDays(from);
       return;
     }
     if (res.status === 401) {
@@ -189,8 +243,7 @@ export default function BookingFlow({
   const steps: { id: Step; label: string }[] = reschedule
     ? [{ id: "orario", label: "Nuovo giorno e ora" }]
     : [
-        { id: "servizi", label: "Servizi" },
-        { id: "orario", label: "Giorno e ora" },
+        { id: "scelta", label: "Servizio e orario" },
         ...(initialCustomer ? [] : [{ id: "accesso" as Step, label: "Accesso" }]),
         { id: "conferma", label: "Conferma" },
       ];
@@ -199,131 +252,30 @@ export default function BookingFlow({
   const canGoBack = from && today && from > today;
   const canGoForward = from && lastDay && days && days.length === DAYS_PER_PAGE && days.at(-1)!.date < lastDay;
 
-  return (
-    <div className="mx-auto max-w-3xl px-4 pt-5 pb-10 md:px-8 md:pt-14 md:pb-16">
-      {step !== "fatto" && (
-        <nav aria-label="Passaggi della prenotazione">
-          <ol className="flex gap-1 text-sm">
-            {steps.map((s, i) => (
-              <li
-                key={s.id}
-                aria-current={i === currentIdx ? "step" : undefined}
-                className={`flex-1 border-t-4 pt-2 ${i <= currentIdx ? "border-ink text-ink" : "border-line text-ink-3"} ${i === currentIdx ? "font-bold" : ""}`}
+  const dayPicker = (
+    <>
+          <div className="mt-4 flex items-center justify-between gap-2">
+            {step === "scelta" ? <h2 className="font-display text-2xl">Quando vieni?</h2> : <span />}
+            <div className="flex">
+              <button
+                type="button"
+                onClick={() => shiftWeek(-1)}
+                disabled={!canGoBack}
+                aria-label="Settimana prima"
+                className="min-h-11 px-2 text-sm font-semibold underline underline-offset-4 disabled:hidden"
               >
-                <span className="sr-only">Passaggio {i + 1}: </span>
-                {s.label}
-              </li>
-            ))}
-          </ol>
-        </nav>
-      )}
-
-      {/* 1. Servizi */}
-      {step === "servizi" && (
-        <section aria-labelledby="titolo-step" className="mt-6 md:mt-10">
-          <h1 id="titolo-step" ref={headingRef} tabIndex={-1} className="font-display text-[2rem] leading-tight outline-none focus-visible:outline-none md:text-5xl">
-            Cosa facciamo?
-          </h1>
-          <p className="mt-2 text-ink-2">Puoi scegliere più servizi.</p>
-          <div className="mt-6 border-t-2 border-ink">
-            {listino.map((sezione) => {
-              const isOpen = openSections.includes(sezione.id);
-              const count = sezione.services.filter((x) => selected.includes(x.id)).length;
-              const panelId = `sezione-${sezione.id}`;
-              return (
-                <fieldset key={sezione.id} className="border-b border-line">
-                  <legend className="sr-only">{sezione.name}</legend>
-                  <h2>
-                    <button
-                      type="button"
-                      aria-expanded={isOpen}
-                      aria-controls={panelId}
-                      onClick={() => toggleSection(sezione.id)}
-                      className="flex min-h-14 w-full items-center gap-3 py-3 text-left transition-colors hover:text-blue"
-                    >
-                      <span className="flex-1 font-display text-2xl">{sezione.name}</span>
-                      {count > 0 && (
-                        <span className="bg-ink px-2 py-0.5 text-sm font-semibold text-bg tabular-nums">
-                          {count} {count === 1 ? "scelto" : "scelti"}
-                        </span>
-                      )}
-                      <span
-                        aria-hidden
-                        className={`text-2xl leading-none transition-transform duration-200 ${isOpen ? "rotate-45" : ""}`}
-                      >
-                        +
-                      </span>
-                    </button>
-                  </h2>
-                  <div
-                    id={panelId}
-                    className={`grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none ${isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
-                  >
-                    <ul className="overflow-hidden" inert={!isOpen}>
-                      {sezione.services.map((s) => {
-                        const on = selected.includes(s.id);
-                        return (
-                          <li key={s.id} className="border-t border-line">
-                            <label
-                              className={`flex min-h-14 cursor-pointer items-center gap-3 py-2 transition-colors ${on ? "text-ink" : "hover:text-blue"}`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={on}
-                                onChange={() => toggle(s.id)}
-                                className="h-6 w-6 shrink-0 accent-ink"
-                              />
-                              <span className="min-w-0 flex-1">
-                                <span className={`block ${on ? "font-semibold" : ""}`}>{s.name}</span>
-                                {promoActive && s.promoEligible && (
-                                  <span className="block text-sm font-semibold text-magenta-text">prima visita -{discountPct}%</span>
-                                )}
-                              </span>
-                              <span className="font-semibold whitespace-nowrap tabular-nums">{formatPrezzo(s)}</span>
-                            </label>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                </fieldset>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* 2. Giorno e ora */}
-      {step === "orario" && (
-        <section aria-labelledby="titolo-step" className="mt-6 md:mt-10">
-          <h1 id="titolo-step" ref={headingRef} tabIndex={-1} className="font-display text-[2rem] leading-tight outline-none focus-visible:outline-none md:text-5xl">
-            {reschedule ? "Spostiamo l'appuntamento" : "Quando vieni?"}
-          </h1>
-          <p className="mt-2 text-ink-2">{selectedServices.map((s) => s.name).join(", ")}</p>
-          {reschedule && <p className="mt-1 text-ink-2">Ora: {reschedule.currentLabel}</p>}
-          {notice && (
-            <p role="alert" className="mt-4 border-l-4 border-magenta bg-tint px-4 py-3">
-              {notice}
-            </p>
-          )}
-
-          <div className="mt-8 flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => shiftWeek(-1)}
-              disabled={!canGoBack}
-              className="min-h-11 px-2 font-semibold underline underline-offset-4 disabled:invisible"
-            >
-              Settimana prima
-            </button>
-            <button
-              type="button"
-              onClick={() => shiftWeek(1)}
-              disabled={!canGoForward}
-              className="min-h-11 px-2 font-semibold underline underline-offset-4 disabled:invisible"
-            >
-              Settimana dopo
-            </button>
+                Prima
+              </button>
+              <button
+                type="button"
+                onClick={() => shiftWeek(1)}
+                disabled={!canGoForward}
+                aria-label="Settimana dopo"
+                className="min-h-11 px-2 text-sm font-semibold underline underline-offset-4 disabled:hidden"
+              >
+                Settimana dopo
+              </button>
+            </div>
           </div>
 
           <div aria-busy={!days} aria-live="polite">
@@ -439,6 +391,167 @@ export default function BookingFlow({
               </>
             )}
           </div>
+    </>
+  );
+
+  return (
+    <div className={`mx-auto px-4 pt-5 pb-10 md:px-8 md:pt-14 md:pb-16 ${step === "scelta" ? "max-w-6xl" : "max-w-3xl"}`}>
+      {step !== "fatto" && (
+        <nav aria-label="Passaggi della prenotazione">
+          <ol className="flex gap-1 text-sm">
+            {steps.map((s, i) => (
+              <li
+                key={s.id}
+                aria-current={i === currentIdx ? "step" : undefined}
+                className={`flex-1 border-t-4 pt-2 ${i <= currentIdx ? "border-ink text-ink" : "border-line text-ink-3"} ${i === currentIdx ? "font-bold" : ""}`}
+              >
+                <span className="sr-only">Passaggio {i + 1}: </span>
+                {s.label}
+              </li>
+            ))}
+          </ol>
+        </nav>
+      )}
+
+      {/* 1. Servizio (con anteprima del lavoro) e subito giorno e ora */}
+      {step === "scelta" && (
+        <section aria-labelledby="titolo-step" className="mt-6 md:mt-10">
+          <h1 id="titolo-step" ref={headingRef} tabIndex={-1} className="font-display text-[2rem] leading-tight outline-none focus-visible:outline-none md:text-5xl">
+            Prenota
+          </h1>
+          <p className="mt-2 max-w-xl text-ink-2">Scegli un servizio: guardi il lavoro di Giulia e scegli subito giorno e ora.</p>
+          {notice && (
+            <p role="alert" className="mt-4 border-l-4 border-magenta bg-tint px-4 py-3">
+              {notice}
+            </p>
+          )}
+
+          <div className="mt-6 grid gap-8 md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] md:items-start lg:grid-cols-[minmax(0,4fr)_minmax(0,3fr)_minmax(0,4fr)]">
+            {/* Pannello: anteprima + servizi scelti, giorni e orari.
+                Mobile: sopra l'elenco. Tablet: colonna destra. Desktop: due colonne (lg:contents). */}
+            <div className={`md:order-2 lg:contents ${selected.length === 0 && !previewItem ? "hidden md:block" : ""}`}>
+              <div ref={panelRef} className="scroll-mt-20 lg:sticky lg:top-24 lg:order-2 lg:self-start">
+                <ServicePreview ref={previewRef} item={previewItem} />
+              </div>
+
+              <div className="mt-3 lg:sticky lg:top-24 lg:order-3 lg:mt-0 lg:self-start">
+                {selected.length > 0 ? (
+                  <>
+                    <h2 className="sr-only">Servizi scelti</h2>
+                    <ul className={`flex-wrap gap-2 ${selected.length === 1 && selected[0] === previewId ? "hidden lg:flex" : "flex"}`}>
+                      {selectedServices.map((s) => (
+                        <li key={s.id} className="flex items-center border border-ink">
+                          <span className="py-1.5 pl-3 font-semibold">
+                            {s.name} <span className="font-normal text-ink-2 tabular-nums">{formatPrezzo(s)}</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => remove(s.id)}
+                            aria-label={`Togli ${s.name}`}
+                            className="flex min-h-11 min-w-11 items-center justify-center text-xl leading-none hover:bg-ink hover:text-bg"
+                          >
+                            ×
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-2 hidden text-sm text-ink-3 lg:block">Vuoi aggiungere altro? Usa il pulsante + accanto al servizio.</p>
+                    {dayPicker}
+                  </>
+                ) : (
+                  <p className="hidden border border-dashed border-line p-6 text-ink-3 lg:block">
+                    Qui compaiono i giorni e gli orari liberi per il servizio che scegli.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Elenco servizi con filtri */}
+            <div className="md:order-1 lg:order-1">
+              <div role="group" aria-label="Filtra per categoria" className="flex flex-wrap gap-2">
+                {categorie.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    aria-pressed={filtro === c.id}
+                    onClick={() => setFiltro(c.id)}
+                    className={`min-h-11 border px-4 font-semibold transition-colors ${
+                      filtro === c.id ? "border-ink bg-ink text-bg" : "border-line hover:border-ink"
+                    }`}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+              <ul className="mt-4 border-t border-line" aria-label="Servizi">
+                {visibili.map((v) => {
+                  const on = selected.includes(v.id);
+                  const viewing = v.id === previewId;
+                  return (
+                    <li key={v.id} className="flex items-stretch border-b border-line">
+                      <button
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => choose(v)}
+                        className={`group flex min-h-14 flex-1 items-center gap-3 py-3 text-left transition-colors ${on ? "text-ink" : "text-ink-2 hover:text-ink"}`}
+                      >
+                        <span aria-hidden className={`h-8 w-1 shrink-0 transition-colors ${viewing ? "animate-oscillate-bg" : on ? "bg-ink" : "bg-transparent group-hover:bg-line"}`} />
+                        <span className="min-w-0 flex-1">
+                          <span className={`block text-lg ${on ? "font-bold" : ""}`}>{v.name}</span>
+                          {promoActive && v.promoEligible && (
+                            <span className="text-sm font-semibold text-magenta-text">prima visita -{discountPct}%</span>
+                          )}
+                        </span>
+                        <span className="font-semibold whitespace-nowrap tabular-nums">{v.priceLabel}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleAdd(v)}
+                        aria-pressed={on}
+                        aria-label={on ? `Togli ${v.name} dalla prenotazione` : `Aggiungi ${v.name} alla prenotazione`}
+                        className={`ml-2 flex w-11 shrink-0 items-center justify-center self-center border text-xl leading-none transition-colors min-h-11 ${
+                          on ? "border-ink bg-ink text-bg" : "border-line hover:border-ink"
+                        }`}
+                      >
+                        {on ? "✓" : "+"}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+
+              <ul className="mt-8 space-y-1 text-sm text-ink-3">
+                <li>Prezzi in euro, IVA inclusa. Paghi in salone, dopo il servizio.</li>
+                <li>Puoi prenotare più servizi insieme con il pulsante +.</li>
+                {promoActive && (
+                  <li>
+                    -{discountPct}% sulla prima visita su taglio donna, taglio uomo e piega.{" "}
+                    <Link href="/termini#promozione" className="underline underline-offset-2 hover:text-blue">
+                      Condizioni
+                    </Link>
+                  </li>
+                )}
+              </ul>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* 2. Giorno e ora */}
+      {step === "orario" && (
+        <section aria-labelledby="titolo-step" className="mt-6 md:mt-10">
+          <h1 id="titolo-step" ref={headingRef} tabIndex={-1} className="font-display text-[2rem] leading-tight outline-none focus-visible:outline-none md:text-5xl">
+            {reschedule ? "Spostiamo l'appuntamento" : "Quando vieni?"}
+          </h1>
+          <p className="mt-2 text-ink-2">{selectedServices.map((s) => s.name).join(", ")}</p>
+          {reschedule && <p className="mt-1 text-ink-2">Ora: {reschedule.currentLabel}</p>}
+          {notice && (
+            <p role="alert" className="mt-4 border-l-4 border-magenta bg-tint px-4 py-3">
+              {notice}
+            </p>
+          )}
+
+          {dayPicker}
         </section>
       )}
 
@@ -463,7 +576,7 @@ export default function BookingFlow({
                   });
                   if (res.ok) setWaitlistDone((d) => [...d, pendingWaitlist]);
                   setPendingWaitlist(null);
-                  setStep("orario");
+                  setStep("scelta");
                   return;
                 }
                 setStep("conferma");
@@ -591,14 +704,16 @@ export default function BookingFlow({
         <div className="sticky bottom-0 z-20 -mx-4 mt-8 border-t border-line bg-bg pb-[env(safe-area-inset-bottom)] md:-mx-8">
           <div className="flex items-center justify-between gap-4 px-4 py-3 md:px-8">
             <div className="min-w-0 text-sm">
-              {step === "servizi" && (
+              {step === "scelta" && (
                 <p>
                   {selected.length === 0 ? (
-                    <span className="text-ink-3">Nessun servizio scelto</span>
+                    <span className="text-ink-3">Scegli un servizio</span>
+                  ) : slot ? (
+                    <strong>{`${cap(slot.longLabel)}, ${slot.time}`}</strong>
                   ) : (
                     <>
-                      <strong>{selected.length}</strong> {selected.length === 1 ? "servizio" : "servizi"},{" "}
-                      {formatEuro(subtotal)}
+                      <strong>{selectedServices.map((s) => s.name).join(", ")}</strong>, {formatEuro(subtotal)}
+                      <span className="block text-ink-3">Scegli giorno e ora</span>
                     </>
                   )}
                 </p>
@@ -606,29 +721,24 @@ export default function BookingFlow({
               {step === "orario" && (
                 <p>{slot ? <strong>{`${cap(slot.longLabel)}, ${slot.time}`}</strong> : <span className="text-ink-3">Scegli un orario</span>}</p>
               )}
-              {step !== "servizi" && !reschedule && (
+              {step === "conferma" && (
                 <button
                   type="button"
-                  onClick={() => setStep(step === "conferma" ? "orario" : "servizi")}
+                  onClick={() => setStep("scelta")}
                   className="min-h-11 font-semibold underline underline-offset-4"
                 >
                   Indietro
                 </button>
               )}
             </div>
-            {step === "servizi" && (
-              <PrimaryButton disabled={selected.length === 0} onClick={() => setStep("orario")}>
-                Scegli l&apos;orario
+            {step === "scelta" && (
+              <PrimaryButton disabled={!slot} onClick={() => setStep(customer ? "conferma" : "accesso")}>
+                Prenota
               </PrimaryButton>
             )}
             {step === "orario" && reschedule && (
               <PrimaryButton disabled={!slot || submitting} onClick={confirm}>
                 {submitting ? "Spostamento in corso" : "Sposta qui"}
-              </PrimaryButton>
-            )}
-            {step === "orario" && !reschedule && (
-              <PrimaryButton disabled={!slot} onClick={() => setStep(customer ? "conferma" : "accesso")}>
-                Prenota
               </PrimaryButton>
             )}
             {step === "conferma" && (
@@ -640,7 +750,7 @@ export default function BookingFlow({
         </div>
       )}
       {step === "accesso" && (
-        <button type="button" onClick={() => setStep("orario")} className="mt-8 min-h-11 font-semibold underline underline-offset-4">
+        <button type="button" onClick={() => setStep("scelta")} className="mt-8 min-h-11 font-semibold underline underline-offset-4">
           Indietro
         </button>
       )}

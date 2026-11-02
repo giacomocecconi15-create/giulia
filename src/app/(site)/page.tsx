@@ -199,14 +199,14 @@ export default async function Home() {
         <h2 id="listino-title" className="reveal font-display text-4xl md:text-5xl">
           Listino
         </h2>
-        <p className="reveal mt-3 max-w-xl text-ink-2">Prezzi in euro, IVA inclusa. Puoi scegliere più servizi nella stessa prenotazione.</p>
+        <p className="reveal mt-3 max-w-xl text-ink-2">Prezzi in euro, IVA inclusa. Tocca un servizio per vedere il lavoro e scegliere subito giorno e ora.</p>
         <div className="mt-10">
           <ListinoTabelle listino={listino} promoActive={promoAttiva} discountPct={info.discountPct} />
         </div>
         <div className="reveal mt-12 flex flex-wrap items-center gap-4">
           <BottonePrenota>Scegli i servizi e prenota</BottonePrenota>
-          <Link href="/listino" className="inline-flex min-h-12 items-center px-1 font-semibold underline underline-offset-4 hover:text-blue">
-            Listino completo
+          <Link href="/prenota" className="inline-flex min-h-12 items-center px-1 font-semibold underline underline-offset-4 hover:text-blue">
+            Guarda i lavori
           </Link>
         </div>
       </section>
