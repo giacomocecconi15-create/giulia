@@ -5,7 +5,13 @@
 export const site = {
   name: "Level Up Hair Salon & Barber Shop",
   shortName: "Level Up",
-  url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+  /** Indirizzo pubblico: SITE_URL se impostato, altrimenti quello di Vercel. */
+  url:
+    process.env.SITE_URL ??
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000"),
+  /** Google e motori AI indicizzano il sito solo con ALLOW_INDEXING=1 (al lancio). */
+  indexing: process.env.ALLOW_INDEXING === "1",
   description:
     "Parrucchiere e barber shop a Pesaro, in Strada Adriatica 109. Taglio donna e uomo, colore, schiariture, trattamenti e barba. Prenotazione online.",
   operator: "Giulia",

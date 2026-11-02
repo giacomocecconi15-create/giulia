@@ -7,6 +7,8 @@ const privato = ["/account", "/admin", "/api/"];
 const aiBots = ["GPTBot", "OAI-SearchBot", "ChatGPT-User", "CCBot", "Claude-Web", "ClaudeBot", "anthropic-ai", "Google-Extended", "PerplexityBot"];
 
 export default function robots(): MetadataRoute.Robots {
+  // Prima del lancio: niente indicizzazione
+  if (!site.indexing) return { rules: [{ userAgent: "*", disallow: "/" }] };
   return {
     rules: [
       ...aiBots.map((userAgent) => ({ userAgent, allow: "/", disallow: privato })),

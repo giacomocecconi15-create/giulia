@@ -32,6 +32,10 @@ Finché WhatsApp non è collegato, il codice di accesso viene stampato nella con
 
 Ogni branch pubblicato su GitHub ottiene un indirizzo di anteprima.
 
+Finché `ALLOW_INDEXING` non vale `1` il sito chiede a Google e ai motori AI di non indicizzarlo
+(robots.txt e meta noindex): si può provare e mostrare senza che finisca nelle ricerche.
+Al lancio: collega il dominio, imposta `SITE_URL=https://dominio` e `ALLOW_INDEXING=1`, poi Redeploy.
+
 ## Messaggi automatici (cron)
 
 Tutti i compiti periodici passano da `/api/cron/tick`: lista d'attesa, promemoria 24 ore prima,

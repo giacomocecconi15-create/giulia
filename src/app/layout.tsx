@@ -27,6 +27,7 @@ export const metadata: Metadata = {
     description: site.description,
   },
   alternates: { canonical: "/" },
+  ...(!site.indexing && { robots: { index: false, follow: false } }),
 };
 
 // Ricalcola ogni ora: la promo scade da sola senza nuovo deploy.
