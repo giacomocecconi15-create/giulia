@@ -12,7 +12,7 @@ Nella cartella `public/videos/` del progetto. Per ogni servizio servono tre file
 
 `NOME` è quello indicato in `src/data/catalogo.ts` (campo `video`):
 
-taglio-donna, taglio-uomo, piega, asciugatura, colore-ricrescita, colore-completo, tonalizzante,
+taglio-donna, taglio-uomo, piega, asciugatura, colore-ricrescita, colore-uomo (usato da Colore completo), tonalizzante,
 permanente, airtouch, bodylights, meches, balayage, cheratina, trattamento-lunghezze,
 trattamento-cute, rasatura-barba, modellatura-barba, sopracciglia
 

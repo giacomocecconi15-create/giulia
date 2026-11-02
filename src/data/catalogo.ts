@@ -39,9 +39,13 @@ export const catalogo: Record<string, VoceCatalogo> = {
     immagine: { src: "/images/lavoro-sposa-onde.jpg", alt: "Piega a onde morbide su capelli lunghi castani" },
   },
   asciugatura: { categorie: ["donna", "uomo"], descrizione: "Asciugatura veloce dopo il lavaggio, senza messa in piega.", video: "asciugatura" },
-  "colore-ricrescita": { categorie: ["donna"], descrizione: "Colore solo sulla ricrescita, uniforme con le lunghezze.", video: "colore-ricrescita" },
-  "colore-completo": { categorie: ["donna"], descrizione: "Colore pieno dalla radice alle punte.", video: "colore-completo" },
-  tonalizzante: { categorie: ["donna"], descrizione: "Ravviva il riflesso e neutralizza i toni indesiderati dopo la schiaritura.", video: "tonalizzante" },
+  "colore-ricrescita": { categorie: ["donna", "uomo"], descrizione: "Colore solo sulla ricrescita, uniforme con le lunghezze.", video: "colore-ricrescita" },
+  "colore-completo": {
+    categorie: ["donna", "uomo"],
+    descrizione: "Colore pieno dalla radice alle punte, per donna e uomo, fino al biondo platino con tonalizzazione finale.",
+    video: "colore-uomo",
+  },
+  tonalizzante: { categorie: ["donna", "uomo"], descrizione: "Ravviva il riflesso e neutralizza i toni indesiderati dopo la schiaritura.", video: "tonalizzante" },
   permanente: { categorie: ["donna"], descrizione: "Onde e ricci che durano mesi, calibrati sulla tua lunghezza.", video: "permanente" },
   airtouch: { categorie: ["donna"], descrizione: "Schiaritura sfumata e naturale, senza stacchi, che cresce bene.", video: "airtouch" },
   bodylights: { categorie: ["donna"], descrizione: "Luci diffuse su tutta la chioma per un effetto luminoso.", video: "bodylights" },
@@ -55,12 +59,6 @@ export const catalogo: Record<string, VoceCatalogo> = {
   cheratina: { categorie: ["trattamenti", "donna"], descrizione: "Lisciante alla cheratina: capelli disciplinati e lucidi per settimane.", video: "cheratina" },
   "trattamento-lunghezze": { categorie: ["trattamenti"], descrizione: "Nutrimento e ristrutturazione per lunghezze secche o danneggiate.", video: "trattamento-lunghezze" },
   "trattamento-cute": { categorie: ["trattamenti"], descrizione: "Trattamento mirato per cute grassa, secca o sensibile.", video: "trattamento-cute" },
-  // Comparirà quando il servizio "schiaritura-uomo" sarà nel listino (prezzo e durata da Giulia)
-  "schiaritura-uomo": {
-    categorie: ["uomo"],
-    descrizione: "Schiaritura per uomo, dal biondo freddo al platino, con tonalizzazione finale.",
-    video: "schiaritura-uomo",
-  },
   "rasatura-barba": { categorie: ["uomo"], descrizione: "Rasatura completa con panno caldo e rifinitura.", video: "rasatura-barba" },
   "modellatura-barba": { categorie: ["uomo"], descrizione: "Forma e contorni della barba definiti, lunghezza a scelta.", video: "modellatura-barba" },
   sopracciglia: { categorie: ["donna", "uomo"], descrizione: "Pulizia e definizione delle sopracciglia.", video: "sopracciglia" },
@@ -69,6 +67,7 @@ export const catalogo: Record<string, VoceCatalogo> = {
 /** Categoria di ripiego per servizi aggiunti dall'admin e non presenti qui sopra. */
 export function categorieDaSezione(sectionId: string): Categoria[] {
   if (sectionId === "barba") return ["uomo"];
+  if (sectionId === "colore") return ["donna", "uomo"];
   if (sectionId === "trattamenti") return ["trattamenti"];
   return ["donna"];
 }
