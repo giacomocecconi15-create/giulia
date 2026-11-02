@@ -44,6 +44,14 @@ export default function BookingFlow({
   const [selected, setSelected] = useState<string[]>(() =>
     reschedule ? reschedule.serviceIds : preselected.filter((id) => allServices.some((s) => s.id === id)),
   );
+  // Accordion servizi: "Taglio" aperto di default, più le sezioni con servizi già scelti
+  const [openSections, setOpenSections] = useState<string[]>(() => {
+    const withSelected = listino.filter((sec) => sec.services.some((x) => preselected.includes(x.id))).map((sec) => sec.id);
+    const first = listino.find((sec) => sec.id === "taglio")?.id ?? listino[0]?.id;
+    return [...new Set([first, ...withSelected].filter(Boolean) as string[])];
+  });
+  const toggleSection = (id: string) =>
+    setOpenSections((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
   const [pendingWaitlist, setPendingWaitlist] = useState<string | null>(null);
   const [waitlistDone, setWaitlistDone] = useState<string[]>([]);
   const [customer, setCustomer] = useState<LoggedCustomer | null>(initialCustomer);
@@ -192,7 +200,7 @@ export default function BookingFlow({
   const canGoForward = from && lastDay && days && days.length === DAYS_PER_PAGE && days.at(-1)!.date < lastDay;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 pt-10 pb-16 md:px-8 md:pt-14">
+    <div className="mx-auto max-w-3xl px-4 pt-5 pb-10 md:px-8 md:pt-14 md:pb-16">
       {step !== "fatto" && (
         <nav aria-label="Passaggi della prenotazione">
           <ol className="flex gap-1 text-sm">
@@ -212,47 +220,83 @@ export default function BookingFlow({
 
       {/* 1. Servizi */}
       {step === "servizi" && (
-        <section aria-labelledby="titolo-step" className="mt-10">
-          <h1 id="titolo-step" ref={headingRef} tabIndex={-1} className="font-display text-4xl outline-none md:text-5xl">
+        <section aria-labelledby="titolo-step" className="mt-6 md:mt-10">
+          <h1 id="titolo-step" ref={headingRef} tabIndex={-1} className="font-display text-[2rem] leading-tight outline-none focus-visible:outline-none md:text-5xl">
             Cosa facciamo?
           </h1>
           <p className="mt-2 text-ink-2">Puoi scegliere più servizi.</p>
-          {listino.map((sezione) => (
-            <fieldset key={sezione.id} className="mt-8">
-              <legend className="w-full border-b-2 border-ink pb-2 font-display text-2xl">{sezione.name}</legend>
-              <ul>
-                {sezione.services.map((s) => {
-                  const on = selected.includes(s.id);
-                  return (
-                    <li key={s.id} className="border-b border-line">
-                      <label className={`flex min-h-14 cursor-pointer items-center gap-4 py-2 transition-colors ${on ? "text-ink" : "hover:text-blue"}`}>
-                        <input
-                          type="checkbox"
-                          checked={on}
-                          onChange={() => toggle(s.id)}
-                          className="h-5 w-5 shrink-0 accent-ink"
-                        />
-                        <span className="flex-1">
-                          {s.name}
-                          {promoActive && s.promoEligible && (
-                            <span className="ml-2 text-sm font-semibold text-magenta-text">prima visita -{discountPct}%</span>
-                          )}
+          <div className="mt-6 border-t-2 border-ink">
+            {listino.map((sezione) => {
+              const isOpen = openSections.includes(sezione.id);
+              const count = sezione.services.filter((x) => selected.includes(x.id)).length;
+              const panelId = `sezione-${sezione.id}`;
+              return (
+                <fieldset key={sezione.id} className="border-b border-line">
+                  <legend className="sr-only">{sezione.name}</legend>
+                  <h2>
+                    <button
+                      type="button"
+                      aria-expanded={isOpen}
+                      aria-controls={panelId}
+                      onClick={() => toggleSection(sezione.id)}
+                      className="flex min-h-14 w-full items-center gap-3 py-3 text-left transition-colors hover:text-blue"
+                    >
+                      <span className="flex-1 font-display text-2xl">{sezione.name}</span>
+                      {count > 0 && (
+                        <span className="bg-ink px-2 py-0.5 text-sm font-semibold text-bg tabular-nums">
+                          {count} {count === 1 ? "scelto" : "scelti"}
                         </span>
-                        <span className="font-semibold tabular-nums">{formatPrezzo(s)}</span>
-                      </label>
-                    </li>
-                  );
-                })}
-              </ul>
-            </fieldset>
-          ))}
+                      )}
+                      <span
+                        aria-hidden
+                        className={`text-2xl leading-none transition-transform duration-200 ${isOpen ? "rotate-45" : ""}`}
+                      >
+                        +
+                      </span>
+                    </button>
+                  </h2>
+                  <div
+                    id={panelId}
+                    className={`grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none ${isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+                  >
+                    <ul className="overflow-hidden" inert={!isOpen}>
+                      {sezione.services.map((s) => {
+                        const on = selected.includes(s.id);
+                        return (
+                          <li key={s.id} className="border-t border-line">
+                            <label
+                              className={`flex min-h-14 cursor-pointer items-center gap-3 py-2 transition-colors ${on ? "text-ink" : "hover:text-blue"}`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={on}
+                                onChange={() => toggle(s.id)}
+                                className="h-6 w-6 shrink-0 accent-ink"
+                              />
+                              <span className="min-w-0 flex-1">
+                                <span className={`block ${on ? "font-semibold" : ""}`}>{s.name}</span>
+                                {promoActive && s.promoEligible && (
+                                  <span className="block text-sm font-semibold text-magenta-text">prima visita -{discountPct}%</span>
+                                )}
+                              </span>
+                              <span className="font-semibold whitespace-nowrap tabular-nums">{formatPrezzo(s)}</span>
+                            </label>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                </fieldset>
+              );
+            })}
+          </div>
         </section>
       )}
 
       {/* 2. Giorno e ora */}
       {step === "orario" && (
-        <section aria-labelledby="titolo-step" className="mt-10">
-          <h1 id="titolo-step" ref={headingRef} tabIndex={-1} className="font-display text-4xl outline-none md:text-5xl">
+        <section aria-labelledby="titolo-step" className="mt-6 md:mt-10">
+          <h1 id="titolo-step" ref={headingRef} tabIndex={-1} className="font-display text-[2rem] leading-tight outline-none focus-visible:outline-none md:text-5xl">
             {reschedule ? "Spostiamo l'appuntamento" : "Quando vieni?"}
           </h1>
           <p className="mt-2 text-ink-2">{selectedServices.map((s) => s.name).join(", ")}</p>
@@ -400,8 +444,8 @@ export default function BookingFlow({
 
       {/* 3. Accesso */}
       {step === "accesso" && (
-        <section aria-labelledby="titolo-step" className="mt-10">
-          <h1 id="titolo-step" ref={headingRef} tabIndex={-1} className="font-display text-4xl outline-none md:text-5xl">
+        <section aria-labelledby="titolo-step" className="mt-6 md:mt-10">
+          <h1 id="titolo-step" ref={headingRef} tabIndex={-1} className="font-display text-[2rem] leading-tight outline-none focus-visible:outline-none md:text-5xl">
             Il tuo cellulare
           </h1>
           <p className="mt-2 max-w-lg text-ink-2">
@@ -431,8 +475,8 @@ export default function BookingFlow({
 
       {/* 4. Conferma */}
       {step === "conferma" && slot && (
-        <section aria-labelledby="titolo-step" className="mt-10">
-          <h1 id="titolo-step" ref={headingRef} tabIndex={-1} className="font-display text-4xl outline-none md:text-5xl">
+        <section aria-labelledby="titolo-step" className="mt-6 md:mt-10">
+          <h1 id="titolo-step" ref={headingRef} tabIndex={-1} className="font-display text-[2rem] leading-tight outline-none focus-visible:outline-none md:text-5xl">
             Riepilogo
           </h1>
           {customer && <p className="mt-2 text-ink-2">Prenoti come {customer.name}.</p>}
@@ -518,7 +562,7 @@ export default function BookingFlow({
       {step === "fatto" && done && (
         <section aria-labelledby="titolo-step" className="mt-6 text-center">
           <span className="mx-auto block h-1 w-16 animate-oscillate-bg" aria-hidden />
-          <h1 id="titolo-step" ref={headingRef} tabIndex={-1} className="mt-6 font-display text-5xl outline-none">
+          <h1 id="titolo-step" ref={headingRef} tabIndex={-1} className="mt-6 font-display text-5xl outline-none focus-visible:outline-none">
             {reschedule ? "Appuntamento spostato" : "Ci vediamo!"}
           </h1>
           <p className="mt-4 text-xl">
@@ -544,7 +588,7 @@ export default function BookingFlow({
 
       {/* Barra azioni */}
       {step !== "fatto" && step !== "accesso" && (
-        <div className="sticky bottom-0 z-20 -mx-4 mt-10 border-t border-line bg-bg md:-mx-8">
+        <div className="sticky bottom-0 z-20 -mx-4 mt-8 border-t border-line bg-bg pb-[env(safe-area-inset-bottom)] md:-mx-8">
           <div className="flex items-center justify-between gap-4 px-4 py-3 md:px-8">
             <div className="min-w-0 text-sm">
               {step === "servizi" && (

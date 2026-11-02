@@ -1,7 +1,9 @@
 "use client";
 
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
-import { loadStripe, type Stripe } from "@stripe/stripe-js";
+// "pure": Stripe.js si carica solo quando serve la carta, non a ogni pagina
+import type { Stripe } from "@stripe/stripe-js";
+import { loadStripe } from "@stripe/stripe-js/pure";
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 
 export type CardGuaranteeHandle = { ensureCard: () => Promise<boolean> };

@@ -2,15 +2,17 @@
 
 import { useEffect } from "react";
 
-/** Attiva l'entrata morbida degli elementi con classe .reveal. */
+/**
+ * Entrata morbida degli elementi .reveal, su tutte le viewport.
+ * Osserva anche gli elementi aggiunti dopo (cambio pagina lato client,
+ * passaggi della prenotazione), altrimenti resterebbero invisibili.
+ */
 export default function RevealObserver() {
   useEffect(() => {
-    document.documentElement.classList.add("js");
-    const els = document.querySelectorAll<HTMLElement>(".reveal:not(.is-visible)");
-    if (!("IntersectionObserver" in window)) {
-      els.forEach((el) => el.classList.add("is-visible"));
-      return;
-    }
+    const root = document.documentElement;
+    if (!("IntersectionObserver" in window) || !("MutationObserver" in window)) return;
+    root.classList.add("js");
+
     const io = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
@@ -20,10 +22,29 @@ export default function RevealObserver() {
           }
         }
       },
-      { rootMargin: "0px 0px -10% 0px", threshold: 0.05 },
+      { rootMargin: "0px 0px -8% 0px", threshold: 0.01 },
     );
-    els.forEach((el) => io.observe(el));
-    return () => io.disconnect();
+
+    const watch = (scope: ParentNode) => {
+      scope.querySelectorAll<HTMLElement>(".reveal:not(.is-visible)").forEach((el) => io.observe(el));
+    };
+    watch(document);
+
+    const mo = new MutationObserver((records) => {
+      for (const r of records) {
+        r.addedNodes.forEach((n) => {
+          if (!(n instanceof HTMLElement)) return;
+          if (n.matches(".reveal:not(.is-visible)")) io.observe(n);
+          watch(n);
+        });
+      }
+    });
+    mo.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      mo.disconnect();
+      io.disconnect();
+    };
   }, []);
   return null;
 }
