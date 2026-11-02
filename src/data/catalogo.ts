@@ -55,6 +55,12 @@ export const catalogo: Record<string, VoceCatalogo> = {
   cheratina: { categorie: ["trattamenti", "donna"], descrizione: "Lisciante alla cheratina: capelli disciplinati e lucidi per settimane.", video: "cheratina" },
   "trattamento-lunghezze": { categorie: ["trattamenti"], descrizione: "Nutrimento e ristrutturazione per lunghezze secche o danneggiate.", video: "trattamento-lunghezze" },
   "trattamento-cute": { categorie: ["trattamenti"], descrizione: "Trattamento mirato per cute grassa, secca o sensibile.", video: "trattamento-cute" },
+  // Comparirà quando il servizio "schiaritura-uomo" sarà nel listino (prezzo e durata da Giulia)
+  "schiaritura-uomo": {
+    categorie: ["uomo"],
+    descrizione: "Schiaritura per uomo, dal biondo freddo al platino, con tonalizzazione finale.",
+    video: "schiaritura-uomo",
+  },
   "rasatura-barba": { categorie: ["uomo"], descrizione: "Rasatura completa con panno caldo e rifinitura.", video: "rasatura-barba" },
   "modellatura-barba": { categorie: ["uomo"], descrizione: "Forma e contorni della barba definiti, lunghezza a scelta.", video: "modellatura-barba" },
   sopracciglia: { categorie: ["donna", "uomo"], descrizione: "Pulizia e definizione delle sopracciglia.", video: "sopracciglia" },
