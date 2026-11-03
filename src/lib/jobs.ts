@@ -1,5 +1,6 @@
 import "server-only";
 import { advanceWaitlist } from "./booking/waitlist";
+import { refreshInstagramToken } from "./instagram";
 import { loadSettings } from "./booking/server";
 import { when } from "./booking/events";
 import { prisma } from "./db";
@@ -99,6 +100,7 @@ export async function runTick(now = new Date()) {
     await prisma.settings.update({ where: { id: 1 }, data: { lastDailyRunAt: now } });
     result.recalls = await sendRecalls(now);
     result.reviews = await sendReviewRequests(now);
+    result.instagram = await refreshInstagramToken(now).catch((e) => `errore ${e}`);
   } else {
     result.daily = "non ancora";
   }

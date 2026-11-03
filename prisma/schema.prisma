@@ -15,6 +15,23 @@ enum Role {
   admin
 }
 
+enum HairType {
+  lisci
+  mossi
+  ricci
+  afro
+}
+
+enum AgeRange {
+  under18
+  r18_24
+  r25_34
+  r35_44
+  r45_54
+  r55_64
+  r65plus
+}
+
 enum BookingStatus {
   confirmed
   cancelled
@@ -43,6 +60,11 @@ model Customer {
   stripePaymentMethodId String?
   /// Ultimo richiamo "non ti vediamo da 45 giorni"
   lastRecallAt          DateTime?
+  /// Profilo facoltativo, compilato dal cliente nell'area Account
+  bio                   String?         @db.VarChar(280)
+  ageRange              AgeRange?
+  hairType              HairType?
+  profileUpdatedAt      DateTime?
   bookings              Booking[]
   waitlist              WaitlistEntry[]
   punchCard             PunchCard?
@@ -189,6 +211,9 @@ model Settings {
   timezone               String   @default("Europe/Rome")
   /// Ultima esecuzione dei compiti giornalieri (richiami, recensioni)
   lastDailyRunAt         DateTime?
+  /// Token Instagram rinnovato in automatico (scade dopo 60 giorni)
+  instagramToken         String?
+  instagramTokenAt       DateTime?
   updatedAt              DateTime @updatedAt
 }
 
@@ -199,4 +224,16 @@ model PunchCard {
   cuts             Int      @default(0)
   rewardsAvailable Int      @default(0)
   updatedAt        DateTime @updatedAt
+}
+
+/// Eventi anonimi per le statistiche (nessun dato personale, nessun cookie)
+model Event {
+  id        String   @id @default(cuid())
+  /// es. instagram_click
+  type      String
+  /// dettaglio facoltativo (es. "post", "profilo", categoria)
+  ref       String?  @db.VarChar(120)
+  createdAt DateTime @default(now())
+
+  @@index([type, createdAt])
 }

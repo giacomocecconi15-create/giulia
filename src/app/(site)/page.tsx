@@ -1,8 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
+import GalleriaGrid from "@/components/galleria/GalleriaGrid";
+import InstagramLink from "@/components/galleria/InstagramLink";
 import JsonLd from "@/components/JsonLd";
 import ListinoTabelle from "@/components/ListinoTabelle";
 import { getInfoSalone, getListino } from "@/lib/data";
+import { anteprima, getGalleria } from "@/lib/instagram";
 import { buildFaq } from "@/lib/faq";
 import { faqSchema, offerCatalogSchema } from "@/lib/schema";
 import { site } from "@/lib/site";
@@ -22,30 +25,6 @@ const valori = [
   },
 ];
 
-/** Foto dei lavori (public/images), con il consenso delle persone ritratte. */
-const lavori = [
-  {
-    src: "/images/lavoro-balayage.jpg",
-    titolo: "Balayage caramello",
-    alt: "Capelli lunghi castani visti da dietro con balayage caramello e onde morbide, nel salone Level Up",
-  },
-  {
-    src: "/images/lavoro-sposa-ricci.jpg",
-    titolo: "Raccolto sposa con ricci",
-    alt: "Sposa con raccolto alto di ricci definiti e ciuffi liberi, decorato con un tralcio di perle",
-  },
-  {
-    src: "/images/lavoro-sposa-onde.jpg",
-    titolo: "Sposa, onde morbide",
-    alt: "Giulia rifinisce le onde morbide di una sposa in vestaglia di raso, all'aperto tra gli ulivi",
-  },
-  {
-    src: "/images/lavoro-taglio-uomo.jpg",
-    titolo: "Taglio uomo sfumato",
-    alt: "Uomo di profilo con taglio corto sfumato ai lati e volume in alto, nel salone Level Up",
-  },
-];
-
 function BottonePrenota({ children = "Prenota ora" }: { children?: React.ReactNode }) {
   return (
     <Link
@@ -58,7 +37,9 @@ function BottonePrenota({ children = "Prenota ora" }: { children?: React.ReactNo
 }
 
 export default async function Home() {
-  const [listino, info] = await Promise.all([getListino(), getInfoSalone()]);
+  const [listino, info, galleria] = await Promise.all([getListino(), getInfoSalone(), getGalleria()]);
+  const preview = anteprima(galleria.posts, 8);
+  const mappe = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`Level Up ${site.address.street} ${site.address.city}`)}`;
   const promoAttiva = info.promoActive;
   const nastro = listino.flatMap((s) => s.services.map((x) => x.name));
   const prezzi = Object.fromEntries(listino.flatMap((s) => s.services.map((x) => [x.id, x.priceCents])));
@@ -72,30 +53,38 @@ export default async function Home() {
       {/* Hero */}
       <section aria-labelledby="hero-title" className="mx-auto grid max-w-6xl gap-10 px-4 pt-12 pb-16 md:grid-cols-2 md:items-center md:px-8 md:pt-20">
         <div className="reveal">
-          <p className="text-sm font-semibold tracking-widest text-ink-3 uppercase">Hair Salon &amp; Barber Shop, Pesaro</p>
-          <h1 id="hero-title" className="mt-4 font-display text-5xl leading-[1.05] md:text-7xl">
+          <h1 id="hero-title" className="font-display text-5xl leading-[1.05] md:text-7xl">
             Porta i tuoi capelli al livello <span className="animate-oscillate">successivo</span>.
           </h1>
-          <p className="mt-6 max-w-md text-lg text-ink-2">
-            Taglio, colore, schiariture e barba in <strong className="text-ink">Strada Adriatica 109</strong>. Ti segue
-            sempre <strong className="text-ink">Giulia</strong>, dall&apos;inizio alla fine.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center gap-4">
+          <div className="mt-8 flex flex-wrap items-center gap-3">
             <BottonePrenota />
-            <Link href="#listino" className="inline-flex min-h-12 items-center px-1 font-semibold underline underline-offset-4 hover:text-blue">
-              Vedi il listino
+            <Link
+              href="/galleria"
+              className="inline-flex min-h-12 items-center border border-ink px-6 text-lg font-semibold transition-colors hover:bg-ink hover:text-bg"
+            >
+              Lasciati ispirare
             </Link>
           </div>
         </div>
-        <figure className="reveal relative aspect-[4/5] w-full overflow-hidden bg-tint">
-          <Image
-            src="/images/giulia.jpg"
-            alt="Giulia, titolare di Level Up, sorride nel suo salone di Pesaro con un mazzo di fiori in mano"
-            fill
-            priority
-            sizes="(min-width: 768px) 50vw, 100vw"
-            className="object-cover object-top"
-          />
+        <figure className="reveal">
+          <div className="relative aspect-[4/5] w-full overflow-hidden bg-tint">
+            <Image
+              src="/images/giulia.jpg"
+              alt="Giulia, titolare di Level Up, sorride nel suo salone di Pesaro con un mazzo di fiori in mano"
+              fill
+              priority
+              sizes="(min-width: 768px) 50vw, 100vw"
+              className="object-cover object-top"
+            />
+          </div>
+          <figcaption className="mt-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <address className="not-italic">
+              <span className="font-semibold">Level Up, {site.address.street}</span>, {site.address.city}
+            </address>
+            <a href={mappe} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4 hover:text-blue">
+              Indicazioni stradali
+            </a>
+          </figcaption>
         </figure>
       </section>
 
@@ -131,37 +120,25 @@ export default async function Home() {
         </ul>
       </section>
 
-      {/* Lavori */}
-      <section id="lavori" aria-labelledby="lavori-title" className="border-t border-line bg-tint">
+      {/* Galleria: anteprima (4-8 foto), tutto il resto in /galleria */}
+      <section id="galleria" aria-labelledby="galleria-title" className="border-t border-line bg-tint">
         <div className="mx-auto max-w-6xl px-4 py-20 md:px-8">
           <div className="reveal flex flex-wrap items-end justify-between gap-4">
-            <h2 id="lavori-title" className="font-display text-4xl md:text-5xl">
-              I nostri lavori
+            <h2 id="galleria-title" className="font-display text-4xl md:text-5xl">
+              Galleria
             </h2>
-            {site.instagram && (
-              <a href={site.instagram} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4 hover:text-blue">
-                Altri lavori su Instagram
-              </a>
-            )}
+            <Link href="/galleria" className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4 hover:text-blue">
+              Vedi tutta la galleria
+            </Link>
           </div>
-          <ul className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-            {lavori.map((l) => (
-              <li key={l.src} className="reveal">
-                <figure className="group">
-                  <div className="relative aspect-[4/5] overflow-hidden bg-line">
-                    <Image
-                      src={l.src}
-                      alt={l.alt}
-                      fill
-                      sizes="(min-width: 768px) 25vw, 50vw"
-                      className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03] motion-reduce:transition-none"
-                    />
-                  </div>
-                  <figcaption className="mt-2 text-sm font-semibold">{l.titolo}</figcaption>
-                </figure>
-              </li>
-            ))}
-          </ul>
+          <div className="reveal mt-10">
+            <GalleriaGrid posts={preview} filtri={false} />
+          </div>
+          {site.instagram && (
+            <InstagramLink href={site.instagram} className="mt-6 inline-flex min-h-11 items-center font-semibold underline underline-offset-4 hover:text-blue">
+              Seguici su Instagram
+            </InstagramLink>
+          )}
         </div>
       </section>
 
@@ -205,7 +182,7 @@ export default async function Home() {
         </div>
         <div className="reveal mt-12 flex flex-wrap items-center gap-4">
           <BottonePrenota>Scegli i servizi e prenota</BottonePrenota>
-          <Link href="/prenota" className="inline-flex min-h-12 items-center px-1 font-semibold underline underline-offset-4 hover:text-blue">
+          <Link href="/galleria" className="inline-flex min-h-12 items-center px-1 font-semibold underline underline-offset-4 hover:text-blue">
             Guarda i lavori
           </Link>
         </div>

@@ -4,7 +4,7 @@ import MobileMenu from "./MobileMenu";
 
 export const navLinks = [
   { href: "/#valori", label: "Chi siamo" },
-  { href: "/#lavori", label: "Lavori" },
+  { href: "/galleria", label: "Galleria" },
   { href: "/#listino", label: "Listino" },
   { href: "/#faq", label: "Domande" },
   { href: "/#contatti", label: "Contatti" },
