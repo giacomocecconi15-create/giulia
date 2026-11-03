@@ -46,3 +46,6 @@ anteprima-level-up.zip
 /test-results/
 /playwright-report/
 .neon
+
+# Pacchetti Python scaricati per errore nella cartella del progetto
+*.whl
