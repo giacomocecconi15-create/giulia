@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AccountLogin, CancelButton, ConsentToggle, LogoutButton } from "@/components/account/AccountActions";
+import ProfileForm from "@/components/account/ProfileForm";
 import { getAccountData } from "@/lib/account";
 import { CUTS_FOR_REWARD, REWARD_LABEL } from "@/lib/carnet";
 import { formatEuro } from "@/lib/format";
@@ -29,6 +30,9 @@ export default async function Account() {
         <h1 className="font-display text-5xl">Accedi</h1>
         <p className="mt-3 max-w-lg text-ink-2">
           Inserisci il cellulare: ti mandiamo un codice su WhatsApp. Niente email e niente password.
+        </p>
+        <p className="mt-2 max-w-lg text-sm text-ink-3">
+          Per sicurezza l&apos;accesso scade dopo 30 minuti di inattività e quando chiudi il browser.
         </p>
         <div className="mt-8 max-w-sm">
           <AccountLogin />
@@ -174,6 +178,16 @@ export default async function Account() {
             })}
           </ul>
         )}
+      </section>
+
+      {/* Profilo */}
+      <section aria-labelledby="profilo" className="mt-12">
+        <h2 id="profilo" className="border-b-2 border-ink pb-2 font-display text-3xl">
+          Il tuo profilo
+        </h2>
+        <div className="mt-4">
+          <ProfileForm initial={{ bio: customer.bio, ageRange: customer.ageRange, hairType: customer.hairType }} />
+        </div>
       </section>
 
       {/* Preferenze */}

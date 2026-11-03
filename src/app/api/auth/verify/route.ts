@@ -31,6 +31,6 @@ export async function POST(req: Request) {
   if (needsName) return json({ needsName: true });
 
   const customer = existing ?? (await prisma.customer.create({ data: { phone, name } }));
-  await createSession(customer.id);
+  await createSession(customer.id, customer.role);
   return json({ ok: true, customer: { name: customer.name, phone: customer.phone } });
 }

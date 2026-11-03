@@ -25,6 +25,7 @@ export default function Privacy() {
           body: (
             <ul>
               <li><strong>Dati di contatto</strong>: nome e numero di cellulare.</li>
+              <li><strong>Profilo facoltativo</strong>: breve bio, fascia d&apos;età e tipo di capelli, se scegli di compilarli. Servono a Giulia per preparare l&apos;appuntamento e, in forma aggregata e anonima, per statistiche interne. Puoi modificarli o cancellarli quando vuoi dall&apos;area Account.</li>
               <li><strong>Prenotazioni</strong>: servizi, date, stato (confermata, disdetta, completata), prezzi e sconti.</li>
               <li><strong>Carta di pagamento</strong>: i dati della carta sono raccolti e conservati da Stripe; noi conserviamo solo un identificativo e le ultime 4 cifre.</li>
               <li><strong>Dati tecnici</strong>: indirizzo IP per sicurezza e limitazione degli abusi nell&apos;invio dei codici.</li>
@@ -64,6 +65,7 @@ export default function Privacy() {
             <ul>
               <li>Account e storico prenotazioni: fino a 24 mesi dall&apos;ultima visita, poi cancellati o anonimizzati (<em>da confermare</em>).</li>
               <li>Codici di accesso: pochi giorni.</li>
+              <li>Sessione di accesso: scade dopo 30 minuti di inattività o alla chiusura del browser.</li>
               <li>Documenti fiscali: 10 anni, come previsto dalla legge.</li>
             </ul>
           ),

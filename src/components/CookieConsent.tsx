@@ -7,17 +7,50 @@ import { useEffect, useState } from "react";
 type Consent = "accepted" | "rejected" | null;
 
 const COOKIE = "lu_consent";
-const MAX_AGE = 60 * 60 * 24 * 180; // 6 mesi
+/**
+ * Versione dell'informativa cookie: aumentarla quando cambiano cookie o finalità,
+ * così il banner viene ripresentato a tutti.
+ */
+export const CONSENT_VERSION = 1;
+const MAX_AGE_DAYS = 180; // 6 mesi, come da linee guida del Garante (2021)
 export const OPEN_PREFS_EVENT = "lu:open-cookie-prefs";
 
+/** Formato: v<versione>.<accepted|rejected>.<giorno della scelta>. Tutto il resto vale come "nessuna scelta". */
+export function parseConsent(raw: string | undefined, today = Math.floor(Date.now() / 86_400_000)): Consent {
+  const m = raw?.match(/^v(\d+)\.(accepted|rejected)\.(\d+)$/);
+  if (!m) return null;
+  const [, version, value, day] = m;
+  if (Number(version) !== CONSENT_VERSION) return null;
+  if (today - Number(day) > MAX_AGE_DAYS || Number(day) > today + 1) return null;
+  return value as Consent;
+}
+
 function readConsent(): Consent {
-  const m = document.cookie.match(/(?:^|; )lu_consent=(accepted|rejected)/);
-  return (m?.[1] as Consent) ?? null;
+  const m = document.cookie.match(/(?:^|; )lu_consent=([^;]+)/);
+  return parseConsent(m ? decodeURIComponent(m[1]) : undefined);
 }
 
 function writeConsent(value: Exclude<Consent, null>) {
   const secure = location.protocol === "https:" ? "; Secure" : "";
-  document.cookie = `${COOKIE}=${value}; Max-Age=${MAX_AGE}; Path=/; SameSite=Lax${secure}`;
+  const day = Math.floor(Date.now() / 86_400_000);
+  document.cookie = `${COOKIE}=v${CONSENT_VERSION}.${value}.${day}; Max-Age=${MAX_AGE_DAYS * 86_400}; Path=/; SameSite=Lax${secure}`;
+}
+
+/** Al rifiuto o alla revoca: cancella i cookie di misurazione e marketing eventualmente presenti. */
+function clearTrackingCookies() {
+  const names = document.cookie.split("; ").map((c) => c.split("=")[0]).filter((n) => /^(_ga|_gid|_gat|_fbp|_fbc)/.test(n));
+  const host = location.hostname;
+  const domains = ["", host, `.${host}`, `.${host.split(".").slice(-2).join(".")}`];
+  for (const n of names) for (const d of domains) document.cookie = `${n}=; Max-Age=0; Path=/${d ? `; Domain=${d}` : ""}`;
+}
+
+/** Registra in forma anonima solo la scelta (prova del consenso, nessun dato personale). */
+function logChoice(value: string) {
+  try {
+    navigator.sendBeacon?.("/api/track", new Blob([JSON.stringify({ type: "cookie_consent", ref: `v${CONSENT_VERSION}:${value}` })], { type: "application/json" }));
+  } catch {
+    /* niente */
+  }
 }
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
@@ -43,6 +76,8 @@ export default function CookieConsent() {
   const choose = (value: Exclude<Consent, null>) => {
     const revoked = consent === "accepted" && value === "rejected";
     writeConsent(value);
+    logChoice(value);
+    if (value === "rejected") clearTrackingCookies();
     setConsent(value);
     setOpen(false);
     // Gli script già caricati non si possono scaricare: si ricarica la pagina.

@@ -2,9 +2,8 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { prisma } from "./db";
+import { maxHours, sessionCookieOptions, SESSION_COOKIE, signSession, verifySession } from "./session-token";
 
-const COOKIE = "lu_session";
-export const SESSION_DAYS = 90;
 
 function secret(): string {
   const s = process.env.SESSION_SECRET;
@@ -22,44 +21,23 @@ export function safeEqual(a: string, b: string): boolean {
   return ba.length === bb.length && timingSafeEqual(ba, bb);
 }
 
-type Payload = { cid: string; exp: number };
-
-function sign(p: Payload): string {
-  const body = Buffer.from(JSON.stringify(p)).toString("base64url");
-  return `${body}.${hmac(body)}`;
-}
-
-function verify(token: string): Payload | null {
-  const [body, sig] = token.split(".");
-  if (!body || !sig || !safeEqual(sig, hmac(body))) return null;
-  try {
-    const p = JSON.parse(Buffer.from(body, "base64url").toString()) as Payload;
-    return p.exp > Date.now() ? p : null;
-  } catch {
-    return null;
-  }
-}
-
-/** Apre la sessione (cookie httpOnly, 90 giorni). */
-export async function createSession(customerId: string) {
-  const exp = Date.now() + SESSION_DAYS * 86_400_000;
-  (await cookies()).set(COOKIE, sign({ cid: customerId, exp }), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: SESSION_DAYS * 86_400,
-  });
+/** Apre la sessione: cookie di sessione del browser con scadenza per inattività. */
+export async function createSession(customerId: string, role: "customer" | "admin" = "customer") {
+  const now = Date.now();
+  const adm = role === "admin";
+  const token = await signSession({ cid: customerId, adm, last: now, abs: now + maxHours(adm) * 3_600_000 });
+  (await cookies()).set(SESSION_COOKIE, token, sessionCookieOptions);
 }
 
 export async function destroySession() {
-  (await cookies()).delete(COOKIE);
+  (await cookies()).delete(SESSION_COOKIE);
 }
 
-/** Cliente della sessione corrente, o null. */
+/** Cliente della sessione corrente, o null (anche se scaduta per inattività). */
 export async function getCurrentCustomer() {
-  const token = (await cookies()).get(COOKIE)?.value;
-  const p = token ? verify(token) : null;
-  if (!p) return null;
-  return prisma.customer.findUnique({ where: { id: p.cid } });
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+  const r = await verifySession(token);
+  if (!r.ok) return null;
+  return prisma.customer.findUnique({ where: { id: r.payload.cid } });
 }

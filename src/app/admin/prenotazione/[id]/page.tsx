@@ -6,6 +6,7 @@ import { btn, btnPrimary, statusText } from "@/components/admin/ui";
 import { prisma } from "@/lib/db";
 import { formatEuro } from "@/lib/format";
 import { formatPhone } from "@/lib/phone";
+import { labelAge, labelHair } from "@/lib/profile";
 import { stripeConfigured } from "@/lib/stripe";
 import { labelGiornoLungo, romeHm, romeYmd } from "@/lib/time";
 import { ITEMS_ORDER } from "@/lib/booking/order";
@@ -62,6 +63,17 @@ export default async function Prenotazione({ params }: { params: Promise<{ id: s
           {b.createdByAdmin ? "telefono" : b.source ?? "online"}
           {b.fromWaitlist && ", lista d'attesa"}
         </dd>
+        {(b.customer.hairType || b.customer.ageRange || b.customer.bio) && (
+          <>
+            <dt className="text-ink-3">Profilo</dt>
+            <dd>
+              {[labelHair(b.customer.hairType) && `Capelli ${labelHair(b.customer.hairType)!.toLowerCase()}`, labelAge(b.customer.ageRange) && `età ${labelAge(b.customer.ageRange)}`]
+                .filter(Boolean)
+                .join(", ")}
+              {b.customer.bio && <span className="mt-1 block text-ink-2 italic">&ldquo;{b.customer.bio}&rdquo;</span>}
+            </dd>
+          </>
+        )}
         <dt className="text-ink-3">Cliente</dt>
         <dd>
           {b.customer._count.bookings} prenotazioni, carnet {b.customer.punchCard?.cuts ?? 0}/5
