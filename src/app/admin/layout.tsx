@@ -13,7 +13,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <header className="border-b border-line">
         <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
           <Link href="/admin" className="font-display text-xl">
-            Level Up <span className="text-sm text-ink-3">agenda</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-level-up.svg" alt="Level Up" width={72} height={36} className="inline h-8 w-auto align-middle" />{" "}
+            <span className="align-middle text-sm text-ink-3">agenda</span>
           </Link>
           <Link href="/account" className="text-sm text-ink-3 underline underline-offset-4">
             {admin.name}

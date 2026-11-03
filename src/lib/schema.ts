@@ -12,6 +12,8 @@ export function businessSchema(info: InfoSalone) {
     alternateName: "Level Up Pesaro",
     description: site.description,
     url: site.url,
+    logo: `${site.url}/logo.png`,
+    image: [`${site.url}/images/giulia.jpg`, `${site.url}/logo.png`],
     ...(site.phone && { telephone: site.phone }),
     address: {
       "@type": "PostalAddress",

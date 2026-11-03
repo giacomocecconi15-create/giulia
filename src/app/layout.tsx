@@ -25,6 +25,7 @@ export const metadata: Metadata = {
     siteName: site.name,
     title: "Level Up Pesaro | Parrucchiere e Barber Shop",
     description: site.description,
+    images: [{ url: "/images/giulia.jpg", width: 1179, height: 1474, alt: "Giulia nel salone Level Up a Pesaro" }],
   },
   alternates: { canonical: "/" },
   ...(!site.indexing && { robots: { index: false, follow: false } }),

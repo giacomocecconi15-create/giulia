@@ -53,7 +53,8 @@ export default async function Home() {
       {/* Hero */}
       <section aria-labelledby="hero-title" className="mx-auto grid max-w-6xl gap-10 px-4 pt-12 pb-16 md:grid-cols-2 md:items-center md:px-8 md:pt-20">
         <div className="reveal">
-          <h1 id="hero-title" className="font-display text-5xl leading-[1.05] md:text-7xl">
+          <p className="text-sm font-semibold tracking-widest text-ink-3 uppercase">Hair Salon &amp; Barber Shop, Pesaro</p>
+          <h1 id="hero-title" className="mt-4 font-display text-5xl leading-[1.05] md:text-7xl">
             Porta i tuoi capelli al livello <span className="animate-oscillate">successivo</span>.
           </h1>
           <div className="mt-8 flex flex-wrap items-center gap-3">

@@ -10,7 +10,11 @@ export default async function Footer() {
   const chiusi = giorniChiusi(openingHours);
   return (
     <footer id="contatti" className="border-t border-line bg-tint">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 md:grid-cols-3 md:px-8">
+      <div className="mx-auto max-w-6xl px-4 pt-14 md:px-8">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.svg" alt="Level Up Hair Salon & Barber Shop" width={240} height={163} className="h-auto w-52 md:w-60" loading="lazy" />
+      </div>
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 pt-10 pb-14 md:grid-cols-3 md:px-8">
         <section aria-labelledby="footer-dove">
           <h2 id="footer-dove" className="font-display text-2xl">
             Dove siamo

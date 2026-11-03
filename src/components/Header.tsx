@@ -14,8 +14,10 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-bg">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 md:px-8">
-        <Link href="/" className="flex min-h-11 items-center font-display text-xl leading-none whitespace-nowrap sm:text-2xl" aria-label="Level Up, torna alla home">
-          Level Up
+        <Link href="/" className="flex min-h-11 shrink-0 items-center" aria-label="Level Up, torna alla home">
+          {/* Logo vettoriale: nitido a qualsiasi dimensione e sugli schermi retina */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-level-up.svg" alt="" width={84} height={42} className="h-9 w-auto sm:h-11" />
         </Link>
         <nav aria-label="Principale" className="hidden lg:block">
           <ul className="flex items-center gap-6 text-ink-2">
