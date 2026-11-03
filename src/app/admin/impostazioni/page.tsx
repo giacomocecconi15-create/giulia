@@ -18,6 +18,7 @@ export default async function Impostazioni() {
     <>
       <h1 className="font-display text-3xl">Altro</h1>
       <nav className="mt-4 flex flex-wrap gap-3 text-sm">
+        <Link href="/admin/blocchi" className="min-h-11 border border-line px-4 py-3 hover:border-ink">Ferie e chiusure</Link>
         <Link href="/admin/attesa" className="min-h-11 border border-line px-4 py-3 hover:border-ink">Lista d&apos;attesa</Link>
         <Link href="/admin/report" className="min-h-11 border border-line px-4 py-3 hover:border-ink">Report mensile</Link>
       </nav>

@@ -69,6 +69,8 @@ test("cliente da Instagram prenota, Giulia segna la visita e la ritrova nel repo
   await g.goto("/account");
   await acceptCookies(g);
   await loginWithDevCode(g, ADMIN_PHONE.replace("+39", ""));
+  // Attende che l'accesso sia completato prima di aprire l'agenda
+  await expect(g.getByRole("heading", { name: "Ciao Giulia" })).toBeVisible();
   await g.goto("/admin?vista=settimana");
   await g.getByRole("link", { name: "Successivo" }).click();
   await g.getByRole("link", { name: /Sara Neri/ }).click();
